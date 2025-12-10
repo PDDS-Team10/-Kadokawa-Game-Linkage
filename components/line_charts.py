@@ -1,0 +1,284 @@
+# components/line_charts.py
+#
+# This component shows two line charts in the middle section of the dashboard:
+#   - Genre trend over time
+#   - Publisher trend over time
+#
+# Both charts:
+#   - Use the global year-month filters (`global-start-ym`, `global-end-ym`).
+#   - Share the same metric toggle: "Revenue" or "Units Sold".
+#
+# For teammates (especially front-end):
+# - If you want to change layout (e.g., height, titles, flex layout),
+#   you can usually do it inside `layout()`.
+# - If you want to add a new trend chart (e.g., by Platform),
+#   you can copy `_genre_trend_df` / `_genre_trend_fig` as a template and
+#   add a new Graph + one more Output in `update_trend_charts`.
+
+from dash import html, dcc, Input, Output, callback
+import plotly.express as px
+from utils.query import read_df
+
+
+# --------- helpers ---------
+
+def _normalize_month_range(start_ym, end_ym):
+    """
+    Normalize the year-month range:
+    - Fill in default values if any side is missing.
+    - Ensure start_ym <= end_ym by swapping if needed.
+
+    Parameters
+    ----------
+    start_ym : str | None
+    end_ym   : str | None
+
+    Returns
+    -------
+    (start_ym, end_ym) : tuple[str, str]
+        Normalized 'YYYY-MM' strings.
+    """
+    # 預設日期區間：2022-01 ~ 2024-12
+    if not start_ym:
+        start_ym = "2022-01"
+    if not end_ym:
+        end_ym = "2024-12"
+
+    # 防呆：確保 start_ym <= end_ym
+    if start_ym > end_ym:
+        start_ym, end_ym = end_ym, start_ym
+
+    return start_ym, end_ym
+
+
+def _genre_trend_df(start_ym, end_ym):
+    sql = """
+    SELECT 
+        m.year_month,
+        g.genre_name,
+        SUM(m.revenue_jpy) AS revenue,
+        SUM(m.sales_units)  AS units
+    FROM SaleMonthly m
+    JOIN GAME ga   ON m.game_id = ga.game_id
+    JOIN GENRE g   ON ga.genre_id = g.genre_id
+    WHERE m.year_month BETWEEN ? AND ?
+    GROUP BY m.year_month, g.genre_name
+    ORDER BY m.year_month;
+    """
+    return read_df(sql, [start_ym, end_ym])
+
+
+def _publisher_trend_df(start_ym, end_ym):
+    sql = """
+    SELECT 
+        m.year_month,
+        p.publisher_name,
+        SUM(m.revenue_jpy) AS revenue,
+        SUM(m.sales_units)  AS units
+    FROM SaleMonthly m
+    JOIN GAME g      ON m.game_id = g.game_id
+    JOIN PUBLISHER p ON g.publisher_id = p.publisher_id
+    WHERE m.year_month BETWEEN ? AND ?
+    GROUP BY m.year_month, p.publisher_name
+    ORDER BY m.year_month;
+    """
+    return read_df(sql, [start_ym, end_ym])
+
+
+def _build_line_fig(df, x_col, series_col, metric, title):
+    """
+    Shared line chart builder.
+    metric: "revenue" or "units"
+    """
+
+    # 沒有資料時：空圖，保留標題與 margin
+    if df.empty:
+        fig = px.line(title=title)
+        fig.update_layout(
+            xaxis_title="Month",
+            yaxis_title="No data",
+            margin=dict(l=40, r=10, t=40, b=80),
+        )
+        return fig
+
+    # 選擇 y 軸欄位與標籤
+    if metric == "units":
+        y_col = "units"
+        y_title = "Units Sold"
+    else:
+        y_col = "revenue"
+        y_title = "Revenue (JPY)"
+
+    fig = px.line(
+        df,
+        x=x_col,
+        y=y_col,
+        color=series_col,
+        markers=True, # 每個點加 marker 方便讀值
+        title=title,
+    )
+
+    # X 軸顯示每 3 個月一個刻度(避免字太擠)
+    # 這個可以再調整
+    unique_months = df[x_col].unique().tolist()
+    tickvals = unique_months[::3] if len(unique_months) > 3 else unique_months
+
+    fig.update_layout(
+        xaxis_title="Month",
+        yaxis_title=y_title,
+        margin=dict(l=40, r=10, t=40, b=80),
+        xaxis=dict(
+            tickmode="array",
+            tickvals=tickvals,
+            tickangle=-45,
+        ),
+    )
+    return fig
+
+
+def _genre_trend_fig(start_ym, end_ym, metric):
+    """
+    Build the line chart for genre trend.
+    """
+    df = _genre_trend_df(start_ym, end_ym)
+    return _build_line_fig(
+        df=df,
+        x_col="year_month",
+        series_col="genre_name",
+        metric=metric,
+        title="Genre Revenue Trend" if metric == "revenue" else "Genre Units Trend",
+    )
+
+
+def _publisher_trend_fig(start_ym, end_ym, metric):
+    """
+    Build the line chart for publisher trend.
+    """
+    df = _publisher_trend_df(start_ym, end_ym)
+    return _build_line_fig(
+        df=df,
+        x_col="year_month",
+        series_col="publisher_name",
+        metric=metric,
+        title=(
+            "Publisher Revenue Trend"
+            if metric == "revenue"
+            else "Publisher Units Trend"
+        ),
+    )
+
+
+# --------- layout ---------
+
+def layout():
+    """
+    Layout for the trend section.
+
+    Contains:
+    - Title + metric toggle (Revenue / Units Sold).
+    - Two side-by-side graphs:
+        - Left: Genre trend
+        - Right: Publisher trend
+
+    In comments:
+    - 想調整高度、邊距、標題文字，可以直接改這裡的 style 或 H3/H4 文案。
+    """
+    return html.Div(
+        [
+            # 標題 + Metric 切換
+            html.Div(
+                [
+                    html.H3("Revenue / Units Trends", style={"marginBottom": "0"}),
+                    html.Div(
+                        [
+                            html.Span("Metric:", style={"marginRight": "8px"}),
+                            dcc.RadioItems(
+                                id="trend-metric-toggle",
+                                options=[
+                                    {"label": "Revenue", "value": "revenue"},
+                                    {"label": "Units Sold", "value": "units"},
+                                ],
+                                value="revenue",
+                                inline=True,
+                            ),
+                        ],
+                        style={
+                            "display": "flex",
+                            "alignItems": "center",
+                            "marginLeft": "auto",
+                        },
+                    ),
+                ],
+                style={
+                    "display": "flex",
+                    "alignItems": "center",
+                    "justifyContent": "space-between",
+                    "marginBottom": "8px",
+                },
+            ),
+
+            # 兩張圖
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.H4("Genre Revenue Trend", style={"marginBottom": "4px"}),
+                            dcc.Graph(
+                                id="genre-trend-graph",
+                                style={"height": "360px"},
+                            ),
+                        ],
+                        style={"flex": "1", "marginRight": "16px"},
+                    ),
+                    html.Div(
+                        [
+                            html.H4(
+                                "Publisher Revenue Trend",
+                                style={"marginBottom": "4px"},
+                            ),
+                            dcc.Graph(
+                                id="publisher-trend-graph",
+                                style={"height": "360px"},
+                            ),
+                        ],
+                        style={"flex": "1"},
+                    ),
+                ],
+                style={
+                    "display": "flex",
+                    "flexDirection": "row",
+                    "marginBottom": "16px",
+                },
+            ),
+        ]
+    )
+
+
+# --------- callback ---------
+
+@callback(
+    Output("genre-trend-graph", "figure"),
+    Output("publisher-trend-graph", "figure"),
+    Input("global-start-ym", "value"),
+    Input("global-end-ym", "value"),
+    Input("trend-metric-toggle", "value"),
+)
+def update_trend_charts(start_ym, end_ym, metric):
+    """
+    Main callback for updating both trend charts.
+
+    Flow:
+    1. Normalize the date range (fill defaults and fix reversed range).
+    2. Build genre trend figure based on the selected metric.
+    3. Build publisher trend figure based on the same metric.
+    4. Return both figures to update the two Graph components.
+
+    In comments:
+    - 若只想調整線圖樣式（顏色、字型等），可以去 `_build_line_fig()` 裡改
+    """
+    start_ym, end_ym = _normalize_month_range(start_ym, end_ym)
+
+    genre_fig = _genre_trend_fig(start_ym=start_ym, end_ym=end_ym, metric=metric)
+    publisher_fig = _publisher_trend_fig(start_ym=start_ym, end_ym=end_ym, metric=metric)
+
+    return genre_fig, publisher_fig
