@@ -17,7 +17,7 @@ from utils.query import read_df
 from dash_iconify import DashIconify
 from dash import html, Input, Output, callback
 
-def fetch_total_df(start_ym, end_ym):
+def _fetch_total_df(start_ym, end_ym):
     sql = """
     SELECT
         SUM(m.revenue_jpy)        AS total_revenue_jpy,
@@ -27,7 +27,7 @@ def fetch_total_df(start_ym, end_ym):
     """
     return read_df(sql, [start_ym, end_ym])
 
-def fetch_best_publisher_df(start_ym, end_ym):
+def _fetch_best_publisher_df(start_ym, end_ym):
     sql = """
     SELECT 
         p.publisher_name AS publisher,
@@ -75,7 +75,7 @@ def update_kpis(start_ym, end_ym):
         end_ym = "2024-12"
 
     # ① 原本 KPI：總營收、總銷量、標題數
-    total_df = fetch_total_df(start_ym, end_ym)
+    total_df = _fetch_total_df(start_ym, end_ym)
 
     if total_df.empty:
         total_revenue = 0
@@ -93,7 +93,7 @@ def update_kpis(start_ym, end_ym):
     # num_titles_text = _format_number(num_titles)
 
     # ② 新 KPI：這段期間賣最好的 publisher + units
-    best_df = fetch_best_publisher_df(start_ym, end_ym)
+    best_df = _fetch_best_publisher_df(start_ym, end_ym)
     if best_df.empty:
         best_publisher = "-"
         best_units = 0
