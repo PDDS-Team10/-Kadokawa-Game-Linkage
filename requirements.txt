@@ -5,3 +5,4 @@ plotly>=5.0
 numpy>=1.21
 gunicorn>=20.0
 python-dotenv>=1.0
+dash_iconify>=0.1.2
