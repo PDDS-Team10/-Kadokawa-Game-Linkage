@@ -130,7 +130,7 @@ def _region_choropleth_fig(
     Output("region-map-graph", "figure"),
     Input("global-start-ym", "value"),
     Input("global-end-ym", "value"),
-    Input("trend-metric-toggle", "value"),   # "revenue" / "units"
+    Input("metric-toggle", "value"),   # "revenue" / "units"
     Input("region-dim-toggle", "value"),     # "all" / "publisher" / "platform"
     Input("region-filter-dropdown", "value") # publisher_name / platform_name / None
 )
