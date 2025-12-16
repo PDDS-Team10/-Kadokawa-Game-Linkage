@@ -53,7 +53,8 @@ def _region_choropleth_fig(
         dim = "all"
 
     # Choose which metric column to aggregate
-    if metric == "units":
+    metric_label = "units" if metric else "revenue"
+    if metric_label == "units":
         value_col = "sales_units"
         value_label = "Units Sold"
     else:
@@ -120,7 +121,7 @@ def _region_choropleth_fig(
         mapbox=dict(
             center={"lat": 36.5, "lon": 138.0},
             zoom=4.0,
-        ),
+        )
     )
 
     return fig
@@ -130,8 +131,8 @@ def _region_choropleth_fig(
     Output("region-map-graph", "figure"),
     Input("global-start-ym", "value"),
     Input("global-end-ym", "value"),
-    Input("trend-metric-toggle", "value"),   # "revenue" / "units"
-    Input("region-dim-toggle", "value"),     # "all" / "publisher" / "platform"
+    Input("metric-toggle", "value"), # "revenue" / "units"
+    Input("region-dim-toggle", "value"), # "all" / "publisher" / "platform"
     Input("region-filter-dropdown", "value") # publisher_name / platform_name / None
 )
 def update_region_map(start_ym, end_ym, metric, dim, filter_value):
@@ -154,7 +155,7 @@ def update_region_filter_options(dim):
     """
     # All：不顯示任何選項、也不能點
     if dim == "all":
-        return [], None, "Select publisher / platform", True
+        return [], None, "Click Publisher or Platform first", True
 
     if dim == "publisher":
         sql = "SELECT DISTINCT publisher_name FROM PUBLISHER ORDER BY publisher_name;"
@@ -197,35 +198,36 @@ def layout():
                         [
                             html.Label("Filter by:"),
                             dcc.RadioItems(
-                                id="region-dim-toggle",
-                                options=[
+                                id = "region-dim-toggle",
+                                options = [
                                     {"label": "All", "value": "all"},
                                     {"label": "Publisher", "value": "publisher"},
                                     {"label": "Platform", "value": "platform"},
                                 ],
-                                value="all",
-                                inline=True,
+                                value = "all",
+                                inline = True,
+                                className = "pretty-toggle"
                             ),
                         ],
-                        style={"display": "flex", "gap": "1rem", "alignItems": "center"},
+                        style = {"display": "flex", "gap": "1rem", "alignItems": "center"},
                     ),
 
                     # 依 dim 顯示不同選項的 Dropdown
                     html.Div(
                         [
                             dcc.Dropdown(
-                                id="region-filter-dropdown",
-                                placeholder="Select publisher / platform",
-                                clearable=True,
+                                id = "region-filter-dropdown",
+                                placeholder = "Select publisher / platform",
+                                clearable = True,
                             )
                         ],
-                        style={"width": "280px"},
+                        style = {"width": "280px", "marginLeft": "20px"},
                     ),
                 ],
-                style={
+                style = {
                     "display": "flex",
-                    "justifyContent": "space-between",
-                    "alignItems": "flex-end",
+                    "justifyContent": "flex-start",
+                    "alignItems": "center",
                     "marginBottom": "1rem",
                 },
             ),

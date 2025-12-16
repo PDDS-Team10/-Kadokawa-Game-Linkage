@@ -17,6 +17,7 @@
 
 from dash import html, dcc, Input, Output, callback
 import plotly.express as px
+import dash_daq as daq
 from utils.query import read_df
 
 
@@ -126,7 +127,7 @@ def _build_line_fig(df, x_col, series_col, metric, title):
     fig.update_layout(
         xaxis_title="Month",
         yaxis_title=y_title,
-        margin=dict(l=40, r=10, t=40, b=80),
+        margin = dict(l = 20, r = 20, t = 60, b = 20), # 上方留空給標題
         xaxis=dict(
             tickmode="array",
             tickvals=tickvals,
@@ -188,31 +189,40 @@ def layout():
             # 標題 + Metric 切換
             html.Div(
                 [
-                    html.H3("Revenue / Units Trends", style={"marginBottom": "0"}),
+                    html.H3("Revenue / Units Trends", style = {"margin": "0", "marginRight": "16px"}), # 讓 Metric 靠近
                     html.Div(
                         [
-                            html.Span("Metric:", style={"marginRight": "8px"}),
-                            dcc.RadioItems(
-                                id="trend-metric-toggle",
-                                options=[
-                                    {"label": "Revenue", "value": "revenue"},
-                                    {"label": "Units Sold", "value": "units"},
-                                ],
-                                value="revenue",
-                                inline=True,
+                            # html.Span("Metric:", style ={"marginRight": "6px"}),
+
+                            daq.ToggleSwitch(
+                                id = "metric-toggle",
+                                # label = "Metric",
+                                value = False,  # False = Revenue, True = Units
+                                labelPosition = "right",
+                                style = {"marginTop": "4px"}
                             ),
+
+                            html.Div(id = "metric-display", style = {"marginLeft": "8px"})  # 可用來動態顯示當前 Metric
+
+                            # dcc.RadioItems(
+                            #     id="trend-metric-toggle",
+                            #     options=[
+                            #         {"label": "Revenue", "value": "revenue"},
+                            #         {"label": "Units Sold", "value": "units"},
+                            #     ],
+                            #     value="revenue",
+                            #     inline=True,
+                            # ),
                         ],
                         style={
                             "display": "flex",
-                            "alignItems": "center",
-                            "marginLeft": "auto",
+                            "alignItems": "center"
                         },
                     ),
                 ],
                 style={
                     "display": "flex",
                     "alignItems": "center",
-                    "justifyContent": "space-between",
                     "marginBottom": "8px",
                 },
             ),
@@ -222,18 +232,7 @@ def layout():
                 [
                     html.Div(
                         [
-                            html.H4("Genre Revenue Trend", style={"marginBottom": "4px"}),
-                            dcc.Graph(
-                                id="genre-trend-graph",
-                                style={"height": "360px"},
-                            ),
-                        ],
-                        style={"flex": "1", "marginRight": "16px"},
-                    ),
-                    html.Div(
-                        [
                             html.H4(
-                                "Publisher Revenue Trend",
                                 style={"marginBottom": "4px"},
                             ),
                             dcc.Graph(
@@ -242,6 +241,15 @@ def layout():
                             ),
                         ],
                         style={"flex": "1"},
+                    ),
+                    html.Div(
+                        [
+                            dcc.Graph(
+                                id="genre-trend-graph",
+                                style={"height": "360px"},
+                            ),
+                        ],
+                        style={"flex": "1", "marginRight": "16px"},
                     ),
                 ],
                 style={
@@ -259,9 +267,10 @@ def layout():
 @callback(
     Output("genre-trend-graph", "figure"),
     Output("publisher-trend-graph", "figure"),
+    Output("metric-display", "children"),
     Input("global-start-ym", "value"),
     Input("global-end-ym", "value"),
-    Input("trend-metric-toggle", "value"),
+    Input("metric-toggle", "value"),
 )
 def update_trend_charts(start_ym, end_ym, metric):
     """
@@ -278,7 +287,10 @@ def update_trend_charts(start_ym, end_ym, metric):
     """
     start_ym, end_ym = _normalize_month_range(start_ym, end_ym)
 
-    genre_fig = _genre_trend_fig(start_ym=start_ym, end_ym=end_ym, metric=metric)
-    publisher_fig = _publisher_trend_fig(start_ym=start_ym, end_ym=end_ym, metric=metric)
+    metric_label = "units" if metric else "revenue"
+    genre_fig = _genre_trend_fig(start_ym=start_ym, end_ym=end_ym, metric = metric_label)
+    publisher_fig = _publisher_trend_fig(start_ym=start_ym, end_ym=end_ym, metric = metric_label)
+    
+    
+    return genre_fig, publisher_fig, metric_label
 
-    return genre_fig, publisher_fig
