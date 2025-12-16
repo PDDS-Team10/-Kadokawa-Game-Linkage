@@ -12,7 +12,6 @@
 # - If you want to add a new KPI card, you only need to:
 #     1. Update the SQL in `_fetch_kpi_df` to compute the new metric.
 #     2. Add one more `dbc.Col(...)` block in `update_kpis`'s `cards` layout.
-import dash_bootstrap_components as dbc
 from utils.query import read_df
 from datetime import datetime
 from dash_iconify import DashIconify
@@ -155,13 +154,54 @@ def _format_number(n):
     except (TypeError, ValueError):
         return "0"
 
+def _calc_growth(current, previous):
+    if current is None or previous in (None, 0):
+        return None
+    try:
+        return current / previous - 1
+    except ZeroDivisionError:
+        return None
+
+def _render_delta_line(label, value):
+    text = "No data" if value is None else f"{value:+.2%} {label}"
+    tone = "positive" if value and value > 0 else "negative" if value and value < 0 else "neutral"
+    return html.Div(text, className = f"kpi-delta {tone}")
+
+def _build_kpi_card(title, value, subtitle, icon, yoy_delta, mom_delta):
+    return html.Div(
+        className = "kpi-card",
+        children = [
+            html.Div(
+                className = "kpi-card-left",
+                children = [
+                    html.Div(title, className = "kpi-card-title"),
+                    html.Div(value, className = "kpi-card-value"),
+                    html.Div(subtitle, className = "kpi-card-subtitle") if subtitle else None,
+                ],
+            ),
+            html.Div(
+                className = "kpi-card-right",
+                children = [
+                    html.Div(
+                        DashIconify(icon = icon, width = 22, height = 22, color = "#ffffff"),
+                        className = "kpi-icon-badge",
+                    ),
+                    html.Div(
+                        [_render_delta_line("YoY", yoy_delta), _render_delta_line("MoM", mom_delta)],
+                        className = "kpi-delta-group",
+                    ),
+                ],
+            ),
+        ],
+    )
+
 def layout():
     """
     這個 component 只負責放一個容器，真正的卡片內容由 callback 填進來
     """
     return html.Div(
-        id = "kpi-cards-row",
-        style = {"marginBottom": "24px"},
+        id = "kpi-panel-container",
+        className = "kpi-panel-wrapper",
     )
 
 # def _fetch_total_df(start_ym, end_ym):
@@ -193,13 +233,16 @@ def layout():
 #     return read_df(sql, [start_ym, end_ym])
 
 @callback(
-    Output("kpi-cards-row", "children"),
+    Output("kpi-panel-container", "children"),
     Input("url", "pathname"), # 頁面載入時會觸發一次
     # Input("global-start-ym", "value"),
     # Input("global-end-ym", "value"),
 )
 def update_kpis(root):
     kpi = _fetch_total_kpis()
+
+    if not kpi:
+        return html.Div("No KPI data", className = "kpi-panel")
 
     curr_revenue = kpi["latest_data"]["revenue"]
     curr_units   = kpi["latest_data"]["units"]
@@ -212,23 +255,22 @@ def update_kpis(root):
     prev_year_revenue  = kpi["prev_year_data"]["revenue"]
     prev_year_units    = kpi["prev_year_data"]["units"]
 
-    mom_revenue_pct = curr_revenue / prev_one_month_revenue - 1
-    yoy_revenue_pct = curr_revenue / prev_year_revenue - 1
-    mom_units_pct   = curr_units   / prev_one_month_units - 1
-    yoy_units_pct   = curr_units   / prev_year_units - 1
+    mom_revenue_pct = _calc_growth(curr_revenue, prev_one_month_revenue)
+    yoy_revenue_pct = _calc_growth(curr_revenue, prev_year_revenue)
+    mom_units_pct   = _calc_growth(curr_units, prev_one_month_units)
+    yoy_units_pct   = _calc_growth(curr_units, prev_year_units)
 
     pub_kpi = _fetch_best_publisher_kpis()
 
-    best_publisher = pub_kpi["publisher"]
-    best_pub_curr_units = pub_kpi["units"]["latest"]
+    best_publisher = pub_kpi["publisher"] if pub_kpi else "-"
+    best_pub_curr_units = pub_kpi["units"]["latest"] if pub_kpi else None
+    best_pub_curr_units_text = _format_number(best_pub_curr_units) if best_pub_curr_units is not None else "-"
 
-    best_pub_curr_units_text = f"{_format_number(best_pub_curr_units)} Units Sold"
+    prev_one_month_pub_units = pub_kpi["units"].get("prev_one_month") if pub_kpi else None
+    prev_year_pub_units      = pub_kpi["units"].get("prev_year") if pub_kpi else None
 
-    prev_one_month_units = pub_kpi["units"]["prev_one_month"]
-    prev_year_units      = pub_kpi["units"]["prev_year"]
-
-    mom_pub_units_pct = best_pub_curr_units / prev_one_month_units - 1
-    yoy_pub_units_pct = best_pub_curr_units / prev_year_units - 1
+    mom_pub_units_pct = _calc_growth(best_pub_curr_units, prev_one_month_pub_units)
+    yoy_pub_units_pct = _calc_growth(best_pub_curr_units, prev_year_pub_units)
 
     # # 防呆：第一次載入還沒選值時，先給預設區間
     # if not start_ym:
@@ -267,163 +309,34 @@ def update_kpis(root):
     # best_units_text = f"{_format_number(best_units)} Units Sold"
 
     # ③ 卡片 layout：前兩張維持原本，第三張換成 Best-selling Publisher
-    cards = dbc.Row(
-        [
-            dbc.Col(
-                dbc.Card(
-                    [
-                        dbc.CardHeader("Total Revenue"),
-                        dbc.CardBody(
-                            html.Div(
-                                [
-                                    # 左側：數字 + MoM 百分比
-                                    html.Div(
-                                        [
-                                            html.H4(f"{curr_revenue_text}", className = "card-title"),
+    cards = [
+        _build_kpi_card(
+            title = "Total Revenue",
+            value = curr_revenue_text,
+            subtitle = None,
+            icon = "bi:currency-dollar",
+            yoy_delta = yoy_revenue_pct,
+            mom_delta = mom_revenue_pct,
+        ),
+        _build_kpi_card(
+            title = "Total Units Sold",
+            value = curr_units_text,
+            subtitle = None,
+            icon = "bi:bag",
+            yoy_delta = yoy_units_pct,
+            mom_delta = mom_units_pct,
+        ),
+        _build_kpi_card(
+            title = "Best-selling Publisher",
+            value = best_pub_curr_units_text,
+            subtitle = best_publisher,
+            icon = "bi:award",
+            yoy_delta = yoy_pub_units_pct,
+            mom_delta = mom_pub_units_pct,
+        ),
+    ]
 
-                                            # 顯示 YoY
-                                            html.Small(
-                                                
-                                                f"{yoy_revenue_pct:+.2%} YoY" if yoy_revenue_pct is not None else "No data",
-                                                style = {
-                                                    "color": "#28a745" if yoy_revenue_pct and yoy_revenue_pct > 0 else "#dc3545",
-                                                    "fontWeight": "600",
-                                                },
-                                            ),
-
-                                            html.Br(),
-
-                                            # 顯示 MoM
-                                            html.Small(
-                                                
-                                                f"{mom_revenue_pct:+.2%} MoM" if mom_revenue_pct is not None else "No data",
-                                                style = {
-                                                    "color": "#28a745" if mom_revenue_pct and mom_revenue_pct > 0 else "#dc3545",
-                                                    "fontWeight": "600",
-                                                },
-                                            ),
-                                        ]
-                                    ),
-
-                                    # 右側：圖示
-                                    DashIconify(
-                                        icon = "bi:currency-dollar",
-                                        width = 28,
-                                        height = 28,
-                                        style = {"background": "#a2c7fb", "padding": "6px", "borderRadius": "50%", "marginLeft": "40px"},
-                                    )
-                                ], style = {"display": "flex", "justifyContent": "space-between", "alignItems": "center", "paddingTop": "15px"}
-                            ), style = {"backgroundColor": "#f9faff"}
-                        ),
-                    ],
-                    className = "h-100",
-                ),
-                md = 4,
-            ),
-            dbc.Col(
-                dbc.Card(
-                    [
-                        dbc.CardHeader("Total Units Sold"),
-                        dbc.CardBody(
-                            html.Div(
-                                [
-                                    html.Div(
-                                        [
-                                            html.H4(curr_units_text, className = "card-title"),
-
-                                            # 顯示 YoY
-                                            html.Small(
-                                                f"{yoy_units_pct:+.2%} YoY" if yoy_units_pct is not None else "No data",
-                                                style = {
-                                                    "color": "#28a745" if yoy_units_pct and yoy_units_pct > 0 else "#dc3545",
-                                                    "fontWeight": "600",
-                                                },
-                                            ),
-
-                                            html.Br(),
-
-                                            # 顯示 MoM
-                                            html.Small(
-                                                f"{mom_units_pct:+.2%} MoM" if mom_units_pct is not None else "No data",
-                                                style = {
-                                                    "color": "#28a745" if mom_units_pct and mom_units_pct > 0 else "#dc3545",
-                                                    "fontWeight": "600",
-                                                },
-                                            ),
-                                        ]
-                                    ),
-                                    
-                                    DashIconify(
-                                        icon = "bi:bag",
-                                        width = 28,
-                                        height = 28,
-                                        style = {"background": "#a2c7fb", "padding": "4px", "borderRadius": "50%", "marginLeft": "40px"},
-                                    )
-                                    
-                                ], style = {"display": "flex", "justifyContent": "space-between", "alignItems": "center", "paddingTop": "15px"}
-                            ), style = {"backgroundColor": "#f9faff"}
-                        ),
-                    ],
-                    className = "h-100",
-                ),
-                md = 4,
-            ),
-            dbc.Col(
-                dbc.Card(
-                    [
-                        dbc.CardHeader("Best-selling Publisher"),
-                        dbc.CardBody(
-
-                            html.Div(
-                                [
-                                    html.H4(best_publisher, className = "card-title"),
-                                    html.Div(
-                                        [
-                                            # 左側：數字 + YoY、MoM 百分比
-                                            html.Small(
-                                            best_pub_curr_units_text,
-                                            className = "text-muted"),
-
-                                            html.Br(),
-
-                                            # 顯示 YoY
-                                            html.Small(
-                                                f"{yoy_pub_units_pct:+.2%} YoY" if yoy_pub_units_pct is not None else "No data",
-                                                style = {
-                                                    "color": "#28a745" if yoy_pub_units_pct and yoy_pub_units_pct > 0 else "#dc3545",
-                                                    "fontWeight": "600",
-                                                },
-                                            ),
-
-                                            html.Br(),
-
-                                            # 顯示 MoM
-                                            html.Small(
-                                                f"{mom_pub_units_pct:+.2%} MoM" if mom_pub_units_pct is not None else "No data",
-                                                style = {
-                                                    "color": "#28a745" if mom_pub_units_pct and mom_pub_units_pct > 0 else "#dc3545",
-                                                    "fontWeight": "600",
-                                                },
-                                            ),
-                                        ]
-                                    ),
-                                    DashIconify(
-                                        icon = "bi:award",
-                                        width = 28,
-                                        height = 28,
-                                        style = {"background": "#a2c7fb", "padding": "4px", "borderRadius": "50%", "marginLeft": "40px"},
-                                    )
-                                    
-                                ], style = {"display": "flex", "justifyContent": "space-between", "alignItems": "center", "paddingTop": "15px"}
-                            ), style = {"backgroundColor": "#f9faff"}
-                        ),
-                    ],
-                    className = "h-100",
-                ),
-                md = 4,
-            ),
-        ],
-        className = "gy-3", # row 之間一點垂直間距
+    return html.Div(
+        className = "kpi-panel",
+        children = html.Div(cards, className = "kpi-grid"),
     )
-
-    return cards
