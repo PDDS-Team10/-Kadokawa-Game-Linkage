@@ -195,7 +195,7 @@ def layout():
                             # html.Span("Metric:", style ={"marginRight": "6px"}),
 
                             daq.ToggleSwitch(
-                                id = "metric-toggle",
+                                id = "metric-toggle-temp",
                                 # label = "Metric",
                                 value = False,  # False = Revenue, True = Units
                                 labelPosition = "right",
@@ -270,7 +270,7 @@ def layout():
     Output("metric-display", "children"),
     Input("global-start-ym", "value"),
     Input("global-end-ym", "value"),
-    Input("metric-toggle", "value"),
+    Input("metric-toggle-temp", "value"),
 )
 def update_trend_charts(start_ym, end_ym, metric):
     """

@@ -89,7 +89,26 @@ app.layout = dbc.Container(
         dbc.Row(
             [
                 # 左邊空白
-                dbc.Col(md = 8),
+                dbc.Col(
+                    html.Div(
+                        dcc.RadioItems(
+                            id = "metric-toggle",
+                            options=[
+                                {"label": "Revenue", "value": "revenue"},
+                                {"label": "Unit Sold", "value": "units"},
+                            ],
+                            value = "revenue",
+                            inline = True,
+                            className = "metric-toggle",
+                        ),
+                        style = {
+                            "display": "flex",
+                            "alignItems": "center",
+                            "justifyContent": "flex-start",
+                        },
+                    ),
+                    md = 8    
+                ),
 
                 # 右邊 Global Time Range
                 dbc.Col(

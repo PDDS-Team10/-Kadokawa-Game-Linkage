@@ -7,9 +7,8 @@
 #   - A pie chart of game revenue share for the hovered publisher.
 #
 # Interaction:
-#   - "Worst 5" / "Top 5" buttons switch the treemap mode.
+#   - "Top 5" / "Worst 5" buttons switch the treemap mode.
 #   - Hovering on a publisher block in the treemap updates the pie chart on the right.
-#   - "Clear selection" resets the pie chart to a placeholder state.
 #   - Global date range (`global-start-ym`, `global-end-ym`) affects both charts.
 #
 # For teammates:
@@ -18,10 +17,10 @@
 # - To change the logic of "Top/Worst 5", adjust `_publisher_df` and the part in
 #   `update_publisher_overview` that decides `order` and `mode_label`.
 
+import pandas as pd
 from dash import html, dcc, Input, Output, callback, ctx, no_update, State
 import plotly.express as px
 from utils.query import read_df
-
 
 # ---------- helpers ----------
 
@@ -91,43 +90,49 @@ def _publisher_treemap(df, mode_label):
     return fig
 
 
-def _games_df_for_publisher(publisher_name, start_ym="2022-01", end_ym="2024-12", limit=8):
+def _games_df_for_publisher(publisher_name, start_ym = "2022-01", end_ym = "2024-12"):
     sql = """
     SELECT 
         g.game_name,
-        SUM(m.revenue_jpy) AS revenue
+        SUM(m.revenue_jpy) AS revenue,
+        SUM(m.sales_units) AS units
     FROM SaleMonthly m
     JOIN GAME g      ON m.game_id = g.game_id
     JOIN PUBLISHER p ON g.publisher_id = p.publisher_id
     WHERE p.publisher_name = ?
       AND m.year_month BETWEEN ? AND ?
     GROUP BY g.game_name
-    ORDER BY revenue DESC
-    LIMIT ?;
+    ORDER BY revenue DESC;
     """
-    return read_df(sql, [publisher_name, start_ym, end_ym, limit])
+    return read_df(sql, [publisher_name, start_ym, end_ym])
 
-
-def _publisher_games_pie(publisher_name, start_ym, end_ym):
+def _top3_with_others(df, value_col = "revenue"):
     """
-    Build the pie chart for one publisher's game revenue share.
+    df: game_name, revenue (或 units)
+    value_col: "revenue" 或 "units"
     """
-    df = _games_df_for_publisher(publisher_name, start_ym=start_ym, end_ym=end_ym)
-    if df.empty:
-        return _empty_pie_placeholder(f"{publisher_name}: no game data")
 
-    fig = px.pie(
-        df,
-        names="game_name",
-        values="revenue",
-        title=f"Games Revenue Share – {publisher_name}",
-    )
-    fig.update_layout(
-        margin=dict(l=10, r=10, t=40, b=10),
-        height=380,
-    )
-    return fig
+    # 排序
+    df_sorted = df.sort_values(value_col, ascending = False)
 
+    if len(df_sorted) <= 3:
+        return df_sorted  # 不需要合併 Others
+
+    # Top 3
+    top3 = df_sorted.iloc[:3].copy()
+
+    # Others
+    others_value = df_sorted.iloc[3:][value_col].sum()
+
+    others_row = pd.DataFrame([{
+        "game_name": "Others",
+        value_col: others_value
+    }])
+
+    # 合併成正式資料
+    final_df = pd.concat([top3, others_row], ignore_index = True)
+
+    return final_df
 
 def _empty_pie_placeholder(message = "Select a publisher from treemap"):
     """
@@ -145,6 +150,28 @@ def _empty_pie_placeholder(message = "Select a publisher from treemap"):
     )
     return fig
 
+def _publisher_games_pie(publisher_name, start_ym, end_ym, metric = "revenue"):
+    """
+    Build the pie chart for one publisher's game revenue share.
+    """
+    df = _games_df_for_publisher(publisher_name, start_ym = start_ym, end_ym = end_ym)
+
+    if df.empty:
+        return _empty_pie_placeholder(f"{publisher_name}: no game data")
+    
+    df_top = _top3_with_others(df, value_col = metric)
+
+    fig = px.pie(
+        df_top,
+        names = "game_name",
+        values = metric,
+        title = f"Games { 'Revenue' if metric == 'revenue' else 'Units Sold' } Share – {publisher_name}"
+    )
+    fig.update_layout(
+        margin = dict(l = 10, r = 10, t = 40, b = 10),
+        height = 380,
+    )
+    return fig
 
 # ---------- layout ----------
 
@@ -255,6 +282,7 @@ def layout():
     Input("publisher-top-btn", "n_clicks"),
     # Input("publisher-clear-btn", "n_clicks"),
     Input("publisher-overview-graph", "clickData"),
+    Input("metric-toggle", "value"), # "revenue" or "units"
     Input("global-start-ym", "value"),
     Input("global-end-ym", "value"),
 
@@ -265,6 +293,7 @@ def update_publisher_overview(
     n_top,
     # n_clear,
     click_data,
+    metric,
     start_ym,
     end_ym,
     selected_publisher
@@ -302,6 +331,11 @@ def update_publisher_overview(
 
     df_pub = _publisher_df(order = order, limit = 5, start_ym = start_ym, end_ym = end_ym)
     treemap_fig = _publisher_treemap(df_pub, mode_label)
+
+    # 如果是切換 metric：treemap 重新畫（回到 Top/Worst 初始狀態）
+    if trigger_id == "metric-toggle":
+        treemap_fig = _publisher_treemap(df_pub, mode_label)
+        return treemap_fig, _empty_pie_placeholder("Select a publisher from treemap"), None
 
     # --- 如果是切換 Top/Worst：直接回傳空 pie ---
     if trigger_id in ("publisher-top-btn", "publisher-worst-btn"):
@@ -347,6 +381,7 @@ def update_publisher_overview(
             clicked_name,
             start_ym = start_ym,
             end_ym = end_ym,
+            metric = metric
         )
         selected_publisher = clicked_name
 
