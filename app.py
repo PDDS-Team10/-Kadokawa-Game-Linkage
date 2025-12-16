@@ -78,8 +78,20 @@ app.layout = dbc.Container(
                     ),
                     md = 8,
                 ),
+            ],
+            className = "align-items-center mb-4",
+        ),
+ 
+        # KPI 卡片
+        kpi_cards.layout(),
+        html.Hr(),
 
-                # 右邊 Time Range
+        dbc.Row(
+            [
+                # 左邊空白
+                dbc.Col(md = 8),
+
+                # 右邊 Global Time Range
                 dbc.Col(
                     html.Div(
                         [
@@ -123,13 +135,11 @@ app.layout = dbc.Container(
                     ),
                     md = 4,
                 ),
-            ],
-            className = "align-items-center mb-4",
+            ]
         ),
-
-        # KPI 卡片
-        kpi_cards.layout(),
-        html.Hr(),
+        
+        # 確保 layout 裡有這行
+        dcc.Location(id = "url"),
 
         # Worst publishers + Top games pie
         publisher_overview.layout(),
