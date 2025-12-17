@@ -180,3 +180,33 @@ body {
 .kpi-delta.neutral {
     color: #7b8093;
 }
+
+/* Trend Dropdown Styling */
+.trend-dropdown .Select-control {
+    border-radius: 24px !important;
+    background-color: #3d348b !important;
+    border: none !important;
+    padding: 4px 12px !important;
+    height: 44px !important;
+    cursor: pointer;
+}
+
+.trend-dropdown .Select-placeholder,
+.trend-dropdown .Select-value-label {
+    color: white !important;
+    font-weight: 600;
+}
+
+.trend-dropdown .Select-arrow {
+    border-color: white !important;
+}
+
+.trend-dropdown .Select-menu-outer {
+    border-radius: 12px !important;
+}
+
+.trend-dropdown .Select-option:hover {
+    background-color: #5d4ec4 !important;
+    color: white !important;
+}
+

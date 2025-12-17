@@ -166,10 +166,10 @@ app.layout = dbc.Container(
 
         # Genre / Publisher 趨勢
         line_charts.layout(),
-        html.Hr(),
+        # html.Hr(),
 
         # Region 視覺化
-        map_chart.layout(),
+        # map_chart.layout(),
     ],
     fluid = True,
     style = {"paddingLeft": "40px", "paddingRight": "40px", "paddingTop": "40px"},
