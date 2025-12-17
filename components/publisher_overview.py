@@ -34,23 +34,24 @@ def _normalize_month_range(start_ym, end_ym):
     return start_ym, end_ym
 
 
-def _publisher_df(order = "ASC", limit = 5, start_ym = "2022-01", end_ym = "2024-12"):
+def _publisher_df(start_ym = "2022-01", end_ym = "2024-12"): # order = "ASC", limit = 5, 
     sql = f"""
     SELECT 
         p.publisher_name,
-        SUM(m.revenue_jpy) AS revenue
+        SUM(m.revenue_jpy) AS revenue,  
+        SUM(m.sales_units)  AS units
     FROM SaleMonthly m
     JOIN GAME g      ON m.game_id = g.game_id
     JOIN PUBLISHER p ON g.publisher_id = p.publisher_id
     WHERE m.year_month BETWEEN ? AND ?
-    GROUP BY p.publisher_name
-    ORDER BY revenue {order}
-    LIMIT ?;
+    GROUP BY p.publisher_name;
     """
-    return read_df(sql, [start_ym, end_ym, limit])
+    # ORDER BY revenue {order}
+    # LIMIT ?;
+    return read_df(sql, [start_ym, end_ym]) # , limit
 
 
-def _publisher_treemap(df, mode_label):
+def _publisher_treemap(df, mode_label, metric = "revenue"):
     """
     Build the treemap for publishers.
 
@@ -58,28 +59,40 @@ def _publisher_treemap(df, mode_label):
     - Color is still mapped to raw revenue.
     """
     df = df.copy()
-    df["area_value"] = (df["revenue"].clip(lower = 0) ** 0.5)
 
-    # 排序確保 Top/Worst 左上位置正確
-    if mode_label == "Top":
-        df = df.sort_values("revenue", ascending = False)
-    else:  # Worst
-        df = df.sort_values("revenue", ascending = True)
+    # 調整要顯示的欄位
+    metric_col = "revenue" if metric == "revenue" else "units"
+
+    df["area_value"] = (df[metric_col].clip(lower = 0) ** 0.5)
+
+    # 排序方式（Top = DESC, Worst = ASC）
+    ascending = (mode_label == "Worst")
+    df = df.sort_values(metric_col, ascending = ascending).head()
+
+    # # 排序確保 Top/Worst 左上位置正確
+    # if mode_label == "Top":
+    #     df = df.sort_values("revenue", ascending = False)
+    # else:  # Worst
+    #     df = df.sort_values("revenue", ascending = True)
+
+    title_metric = "Revenue" if metric == "revenue" else "Units Sold"
 
     fig = px.treemap(
         df,
         path = ["publisher_name"],
         values = "area_value",
-        color = "revenue",
+        color = metric_col,
         color_continuous_scale = "Blues",
-        title = f"{mode_label} 5 Publishers by Revenue",
+        title = f"{mode_label} 5 Publishers by {title_metric}",
     )
 
     # Custom hover text to show nicely formatted revenue
     fig.update_traces(
-        customdata = df[["publisher_name", "revenue"]].to_numpy(),
+        customdata = df[["publisher_name", metric_col]].to_numpy(),
         hovertemplate = "<b>%{label}</b><br>"
-                      "Revenue: %{customdata[1]:,.0f} JPY<extra></extra>",
+                        f"{title_metric}: " 
+                        "%{customdata[1]:,.0f}"
+                        "<extra></extra>",
     )
 
     fig.update_layout(
@@ -161,12 +174,31 @@ def _publisher_games_pie(publisher_name, start_ym, end_ym, metric = "revenue"):
     
     df_top = _top3_with_others(df, value_col = metric)
 
+    # 加 custom_data 以便 hover 顯示 value
+    df_top["formatted_value"] = df_top[metric].apply(lambda x: f"{x:,.0f}")
+
+    custom_colors = ['#264a7f', '#5d85b3', '#a5c0dd', '#dce6f2']  # 深 → 淺
+
     fig = px.pie(
         df_top,
         names = "game_name",
         values = metric,
-        title = f"Games { 'Revenue' if metric == 'revenue' else 'Units Sold' } Share – {publisher_name}"
+        title = f"Games { 'Revenue' if metric == 'revenue' else 'Units Sold' } Share – {publisher_name}",
+        color = "game_name",
+        color_discrete_sequence = custom_colors,
     )
+
+    label_name = "Revenue" if metric == "revenue" else "Units Sold"
+
+    fig.update_traces(
+        textinfo = "percent",
+        customdata = df_top["formatted_value"].to_numpy().reshape(-1, 1),
+        hovertemplate = "<b>%{label}</b><br>" +
+                        f"{label_name}: " + 
+                        "%{customdata[0]}<br>" + 
+                        "Percent: %{percent}"
+    )
+
     fig.update_layout(
         margin = dict(l = 10, r = 10, t = 40, b = 10),
         height = 380,
@@ -204,7 +236,7 @@ def layout():
                             "marginRight": "10px",
                             "padding": "6px 16px",
                             "borderRadius": "6px",
-                            "background": "#5cb85c",
+                            "background": "#264a7f",
                             "color": "white",
                             "border": "none",
                             "minWidth": "90px"
@@ -218,7 +250,7 @@ def layout():
                             "marginRight": "10px",
                             "padding": "6px 16px",
                             "borderRadius": "6px",
-                            "background": "#d9534f",
+                            "background": "#a5c0dd",
                             "color": "white",
                             "border": "none",
                             "minWidth": "60px"
@@ -329,17 +361,23 @@ def update_publisher_overview(
         order = "DESC"      # 預設是 Top
         mode_label = "Top"
 
-    df_pub = _publisher_df(order = order, limit = 5, start_ym = start_ym, end_ym = end_ym)
-    treemap_fig = _publisher_treemap(df_pub, mode_label)
+    df_pub = _publisher_df(start_ym = start_ym, end_ym = end_ym) # order = order, limit = 5, 
+    treemap_fig = _publisher_treemap(df_pub, mode_label, metric)
+    # Pie chart 預設為空白
+    pie_fig = _empty_pie_placeholder("Select a publisher from treemap")
 
-    # 如果是切換 metric：treemap 重新畫（回到 Top/Worst 初始狀態）
-    if trigger_id == "metric-toggle":
-        treemap_fig = _publisher_treemap(df_pub, mode_label)
-        return treemap_fig, _empty_pie_placeholder("Select a publisher from treemap"), None
+    # Metric toggle or Top/Worst 都：不保留選取，不畫 pie
+    if trigger_id in ("metric-toggle", "publisher-top-btn", "publisher-worst-btn"):
+        selected_publisher = None
+        return treemap_fig, pie_fig, selected_publisher
 
-    # --- 如果是切換 Top/Worst：直接回傳空 pie ---
-    if trigger_id in ("publisher-top-btn", "publisher-worst-btn"):
-        return treemap_fig, _empty_pie_placeholder("Select a publisher from treemap"), None
+    # # 如果是切換 metric：treemap 重新畫（回到 Top/Worst 初始狀態）
+    # if trigger_id == "metric-toggle":
+    #     return treemap_fig, _empty_pie_placeholder("Select a publisher from treemap"), None
+
+    # # --- 如果是切換 Top/Worst：直接回傳空 pie ---
+    # if trigger_id in ("publisher-top-btn", "publisher-worst-btn"):
+    #     return treemap_fig, _empty_pie_placeholder("Select a publisher from treemap"), None
 
     # Treemap：初始載入 / Top/Worst 切換 / 日期改變，都要重畫
     if trigger_id in (
