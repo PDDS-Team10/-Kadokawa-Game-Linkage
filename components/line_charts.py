@@ -190,6 +190,84 @@ def _genre_publisher_trend_fig(start_ym, end_ym, metric, genres, publisher):
         title = f"{', '.join(genres)} Trend ({publisher})"
     )
 
+def _genre_bar_df(genre, start_ym, end_ym):
+    sql = """
+    SELECT 
+        r.region_name AS region,
+        g.game_name,
+        SUM(m.revenue_jpy) AS revenue,
+        SUM(m.sales_units) AS units
+    FROM SaleMonthly m
+    JOIN GAME g          ON m.game_id = g.game_id
+    JOIN GENRE ge        ON g.genre_id = ge.genre_id
+    JOIN REGION r        ON m.region_id = r.region_id
+    WHERE ge.genre_name = ?
+    AND m.year_month BETWEEN ? AND ?
+    GROUP BY r.region_name, g.game_name
+    ORDER BY r.region_name, g.game_name;
+    """
+    return read_df(sql, [genre, start_ym, end_ym])
+
+def _genre_bar_fig(df, genre, metric):
+    """
+    Build bar chart for "Game Title Performance By Genre"
+    X = region
+    Y = revenue or units
+    color = game name
+    """
+    if df.empty:
+        fig = px.bar(title = f"No data for {genre}")
+        fig.update_layout(
+            xaxis_title = "Region",
+            yaxis_title = metric.capitalize(),
+            margin = dict(l = 20, r = 20, t = 40, b = 20),
+        )
+        return fig
+
+    y_col = "revenue" if metric == "revenue" else "units"
+
+    custom_colors = [
+    "#1E2A78", "#2E4A9E", "#4F6CC4", "#7B8FE1",
+    "#A7B2F7", "#C9D1FF", "#E0E7FF"
+    ]
+
+    # ---- Step 1：取 Region Top 5 ----
+    region_rank = (
+        df.groupby("region")[y_col].sum()
+          .sort_values(ascending = False)
+          .head(5)
+          .index.tolist()
+    )
+    df = df[df["region"].isin(region_rank)]
+
+    # ---- Step 2：在前 5 region 裡選 revenue/units Top 3 titles ----
+    title_rank = (
+        df.groupby("game_name")[y_col].sum()
+          .sort_values(ascending = False)
+          .head(3)
+          .index.tolist()
+    )
+    df = df[df["game_name"].isin(title_rank)]
+
+    # 排序確保顏色固定
+    # df = df.sort_values("game_name")
+
+    fig = px.bar(
+        df,
+        x = "region",
+        y = y_col,
+        color = "game_name",
+        barmode = "group",
+        title = f"Game Title Performance — {genre}",
+        color_discrete_sequence = custom_colors # 自訂配色
+    )
+
+    fig.update_layout(
+        xaxis_title = "Region",
+        yaxis_title = "Revenue (JPY)" if metric == "revenue" else "Units Sold",
+        margin = dict(l = 20, r = 20, t = 60, b = 20),
+    )
+    return fig
 
 # --------- layout ---------
 
@@ -283,7 +361,7 @@ def layout():
                     #     },
                     # ),
                 ],
-                style={
+                style = {
                     "display": "flex",
                     "alignItems": "center",
                     "marginBottom": "8px",
@@ -303,19 +381,27 @@ def layout():
                                 style={"height": "360px"},
                             ),
                         ],
-                        style={"flex": "1"},
+                        style = {"flex": "1"},
                     ),
-                    # html.Div(
-                    #     [
-                    #         dcc.Graph(
-                    #             id="genre-trend-graph",
-                    #             style={"height": "360px"},
-                    #         ),
-                    #     ],
-                    #     style={"flex": "1", "marginRight": "16px"},
-                    # ),
+                    html.Div(
+                        [
+                            dcc.Dropdown(
+                                id = "genre-bar-select",
+                                options = [{"label": g, "value": g} for g in GENRE_LIST], # 需在 layout 前準備 genre_list
+                                value = GENRE_LIST[0],
+                                clearable = False,
+                                style = {"width": "300px", "marginBottom": "12px"},
+                            ),
+
+                            dcc.Graph(
+                                id = "genre-bar-graph",
+                                style = {"height": "360px"},
+                            ),
+                        ],
+                        style = {"flex": "1", "marginRight": "16px"},
+                    ),
                 ],
-                style={
+                style = {
                     "display": "flex",
                     "flexDirection": "row",
                     "marginBottom": "16px",
@@ -360,3 +446,16 @@ def update_trend_charts(genres, publisher, start_ym, end_ym, metric):
     
     return publisher_fig # , metric_label # genre_fig,
 
+@callback(
+    Output("genre-bar-graph", "figure"),
+    Input("genre-bar-select", "value"),
+    Input("metric-toggle", "value"),  # "revenue" / "units"
+    Input("global-start-ym", "value"),
+    Input("global-end-ym", "value"),
+)
+def update_genre_bar_chart(genre, metric, start_ym, end_ym):
+    start_ym, end_ym = _normalize_month_range(start_ym, end_ym)
+    df = _genre_bar_df(genre, start_ym, end_ym)
+    metric_label = "units" if metric == "units" else "revenue"
+    fig = _genre_bar_fig(df, genre, metric_label)
+    return fig
