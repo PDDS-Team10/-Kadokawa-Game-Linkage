@@ -201,6 +201,7 @@ def _publisher_games_pie(publisher_name, start_ym, end_ym, metric = "revenue"):
         values = metric,
         color = "game_name",
         color_discrete_sequence = custom_colors,
+        hole = 0.55,
     )
 
     label_name = "Revenue" if metric == "revenue" else "Units Sold"
@@ -208,18 +209,27 @@ def _publisher_games_pie(publisher_name, start_ym, end_ym, metric = "revenue"):
     fig.update_traces(
         textinfo = "percent",
         customdata = df_top["formatted_value"].to_numpy().reshape(-1, 1),
-        hovertemplate = "<b>%{label}</b><br>" +
-                        f"{label_name}: " + 
-                        "%{customdata[0]}<br>" + 
-                        "Percent: %{percent}"
+        hovertemplate = "<b>%{label}</b><br>"
+                        f"{label_name}: "
+                        "%{customdata[0]}<br>"
+                        "Percent: %{percent}",
+        marker = dict(line = dict(color = "#ffffff", width = 1)),
     )
 
     fig.update_layout(
         title = pie_title_for_publisher(publisher_name),
         title_x = 0.5,
-        margin = dict(l = 20, r = 20, t = 60, b = 20),
-        height = 320,
-        legend = dict(font = dict(size = 12), itemsizing = "constant"),
+        margin = dict(l = 10, r = 10, t = 40, b = 60),
+        height = 360,
+        legend = dict(
+            orientation = "h",
+            yanchor = "top",
+            y = -0.05,
+            xanchor = "center",
+            x = 0.5,
+            font = dict(size = 11),
+            itemsizing = "trace",
+        ),
     )
     return fig
 
@@ -262,14 +272,14 @@ def layout():
                             style={"height": "360px"},
                             config={"doubleClick": False, "displayModeBar": True},
                         ),
-                        style={"flex": 2.2, "marginRight": "24px"},
+                        style={"flex": 3, "marginRight": "24px"},
                     ),
                     html.Div(
                         dcc.Graph(
                             id="publisher-games-pie",
                             style={"height": "360px"},
                         ),
-                        style={"flex": 1, "minWidth": "260px"},
+                        style={"flex": 1.2, "minWidth": "260px"},
                     ),
                 ],
                 style={"display": "flex", "alignItems": "stretch"},
@@ -420,6 +430,10 @@ def update_publisher_overview(
     return treemap_fig, pie_fig, selected_publisher, pill_class
 def pie_title_for_publisher(publisher_name: str) -> str:
     """
-    Always render title in two lines to prevent clipping regardless of length.
+    Render donut title with truncated publisher name if necessary.
     """
-    return f"Games Revenue Share<br><sup>{publisher_name}</sup>"
+    max_len = 28
+    display_name = (
+        publisher_name if len(publisher_name) <= max_len else f"{publisher_name[:max_len]}…"
+    )
+    return f"Games Revenue Share<br><sup>{display_name}</sup>"
