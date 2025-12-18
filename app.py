@@ -1,6 +1,6 @@
 # app.py
 from dash.dependencies import Input, Output, State
-from dash import Dash, html, dcc # ← 多匯入 dcc
+from dash import Dash, html, dcc, callback_context
 import dash_bootstrap_components as dbc
 
 from components import kpi_cards, publisher_overview, line_charts, map_chart
@@ -18,6 +18,7 @@ app = Dash(
 )
 app.title = "Kadokawa Game Dashboard"
 
+
 @app.callback(
     Output("global-end-ym", "options"),
     Output("global-end-ym", "value"),
@@ -25,155 +26,118 @@ app.title = "Kadokawa Game Dashboard"
     State("global-end-ym", "value"),
 )
 def update_end_options(start, end):
-    # 全部月份（原本的）
     all_options = [
         f"{y}-{m:02d}"
         for y in range(2022, 2025)
         for m in range(1, 13)
         if not (y == 2024 and m > 12)
     ]
-
-    # 建立所有 >= start 的選項
     end_options = [o for o in all_options if o >= start]
-
-    # 如果原本 end < start，強制把 end 設成 start
     if end < start:
         end = start
-
-    # 回傳成 Dash 用的格式
     return (
         [{"label": o, "value": o} for o in end_options],
         end,
     )
 
+
 app.layout = dbc.Container(
     [
-        # 頂部標題列 + 全局時間 filter
-        dbc.Row(
-            [
-                # 左邊 Logo + Title
-                dbc.Col(
-                    dbc.Row(
-                        [
-                            dbc.Col(
-                                html.Img(
-                                    src = "/assets/logo.png",
-                                    style={
-                                        "height": "40px",
-                                        "marginRight": "16px"
-                                    }
-                                ),
-                                width = "auto",
-                            ),
-                            dbc.Col(
-                                html.H1(
-                                    "Sales Performance Dashboard",
-                                    className = "dashboard-title",
-                                    style = {"margin": "0"}
-                                ),
-                                width = "auto",
-                            ),
-                        ],
-                        className = "align-items-center", # 這行非常重要，讓 Logo 與 Title 垂直置中
-                    ),
-                    md = 8,
+        html.Div(
+            className="dashboard-header",
+            children=[
+                html.Div(
+                    className="dashboard-brand",
+                    children=[
+                        html.Img(src="/assets/kd_logo.png", className="dashboard-logo"),
+                        html.Div("Sales Performance Dashboard", className="dashboard-title"),
+                    ],
                 ),
             ],
-            className = "align-items-center mb-4",
         ),
- 
-        # KPI 卡片
         kpi_cards.layout(),
-        html.Hr(),
-
-        dbc.Row(
-            [
-                # 左邊空白
-                dbc.Col(
-                    html.Div(
+        html.Div(
+            className="global-filters-row",
+            children=[
+                html.Div(
+                    id="metric-toggle-pill",
+                    className="metric-toggle-pill metric-toggle-revenue-active",
+                    children=[
+                        html.Div(className="metric-slider"),
+                        html.Button("Revenue", id="metric-tab-revenue", className="metric-tab metric-tab-left"),
+                        html.Button("Unit Sold", id="metric-tab-units", className="metric-tab metric-tab-right"),
                         dcc.RadioItems(
-                            id = "metric-toggle",
+                            id="metric-toggle",
                             options=[
                                 {"label": "Revenue", "value": "revenue"},
                                 {"label": "Unit Sold", "value": "units"},
                             ],
-                            value = "revenue",
-                            inline = True,
-                            className = "metric-toggle",
+                            value="revenue",
+                            style={"display": "none"},
                         ),
-                        style = {
-                            "display": "flex",
-                            "alignItems": "center",
-                            "justifyContent": "flex-start",
-                        },
-                    ),
-                    md = 8    
+                    ],
                 ),
-
-                # 右邊 Global Time Range
-                dbc.Col(
-                    html.Div(
-                        [
-                            html.Span("Time range", style = {"marginRight": "8px"}),
-
-                            dcc.Dropdown(
-                                id = "global-start-ym",
-                                options = MONTH_OPTIONS,
-                                value = "2022-01",
-                                clearable = False,
-                                searchable = False,
-                                style = {
-                                    "width": "120px",
-                                    "display": "inline-block",
-                                    "verticalAlign": "middle",
-                                },
-                            ),
-
-                            html.Span(" → ", style = {"margin": "0 8px"}),
-
-                            dcc.Dropdown(
-                                id = "global-end-ym",
-                                options = MONTH_OPTIONS,
-                                value = "2024-12",
-                                clearable = False,
-                                searchable = False,
-                                style = {
-                                    "width": "120px",
-                                    "display": "inline-block",
-                                    "verticalAlign": "middle",
-                                },
-                            ),
-                        ],
-                        style = {
-                            "display": "flex",
-                            "flexDirection": "row",
-                            "alignItems": "center",
-                            "justifyContent": "flex-end",
-                            "gap": "8px",
-                        },
-                    ),
-                    md = 4,
+                html.Div(
+                    className="date-range-pill",
+                    children=[
+                        dcc.Dropdown(
+                            id="global-start-ym",
+                            options=MONTH_OPTIONS,
+                            value="2022-01",
+                            clearable=False,
+                            searchable=False,
+                            className="date-pill-dropdown",
+                        ),
+                        html.Span("—", className="date-range-separator"),
+                        dcc.Dropdown(
+                            id="global-end-ym",
+                            options=MONTH_OPTIONS,
+                            value="2024-12",
+                            clearable=False,
+                            searchable=False,
+                            className="date-pill-dropdown",
+                        ),
+                        html.Span(className="date-range-icon"),
+                    ],
                 ),
-            ]
+            ],
         ),
-        
-        # 確保 layout 裡有這行
-        dcc.Location(id = "url"),
-
-        # Worst publishers + Top games pie
+        html.Hr(),
+        dcc.Location(id="url"),
         publisher_overview.layout(),
         html.Hr(),
-
-        # Genre / Publisher 趨勢
         line_charts.layout(),
-        # html.Hr(),
-
-        # Region 視覺化
         # map_chart.layout(),
     ],
-    fluid = True,
-    style = {"paddingLeft": "40px", "paddingRight": "40px", "paddingTop": "40px"},
+    fluid=True,
+    style={"paddingLeft": "40px", "paddingRight": "40px", "paddingTop": "40px"},
 )
 
+
+@app.callback(
+    Output("metric-toggle", "value"),
+    Output("metric-toggle-pill", "className"),
+    Input("metric-tab-revenue", "n_clicks"),
+    Input("metric-tab-units", "n_clicks"),
+    State("metric-toggle", "value"),
+)
+def switch_metric(revenue_clicks, units_clicks, current_value):
+    ctx = callback_context
+    selected = current_value or "revenue"
+    if ctx.triggered:
+        trigger = ctx.triggered[0]["prop_id"].split(".")[0]
+        if trigger == "metric-tab-revenue":
+            selected = "revenue"
+        elif trigger == "metric-tab-units":
+            selected = "units"
+
+    pill_class = (
+        "metric-toggle-pill metric-toggle-revenue-active"
+        if selected == "revenue"
+        else "metric-toggle-pill metric-toggle-units-active"
+    )
+    return selected, pill_class
+
+
 if __name__ == "__main__":
-    app.run(debug = True)
+    app.run(debug=True)

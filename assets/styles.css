@@ -1,4 +1,4 @@
-/* 樣式外框 */
+/* Toggle styles used elsewhere */
 .pretty-toggle label {
     background: #f1f3f4;
     padding: 6px 14px;
@@ -10,128 +10,244 @@
     transition: 0.2s;
 }
 
-/* 隱藏 radio 本體 */
 .pretty-toggle input[type="radio"] {
     display: none;
 }
 
-/* checked 時套用在父層 label */
 .pretty-toggle input[type="radio"]:checked {
-    accent-color: #4a89dc;   /* 保底 */
+    accent-color: #4a89dc;
 }
 
 .pretty-toggle input[type="radio"]:checked ~ * {
     color: white;
 }
 
-/* 使用 parent selector 避免 structural 問題 */
 .pretty-toggle label:has(input[type="radio"]:checked) {
     background: #4a89dc;
     color: white;
     border-color: #4a89dc;
 }
 
-/* hover */
 .pretty-toggle label:hover {
     background: #e8eef7;
 }
 
-/* Toggle Container */
-.metric-toggle {
-    display: inline-flex;
-    padding: 4px;
-    border-radius: 40px;
-    background-color: #3d348b;
-    gap: 0;
+/* Global filters */
+.global-filters-row {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 24px;
+    margin: 24px 60px 16px;
 }
 
-/* Hide radio circles */
-.metric-toggle input {
-    display: none;
-}
-
-/* Label wrapper */
-.metric-toggle label {
+.metric-toggle-pill {
+    position: relative;
     display: inline-flex;
     align-items: center;
-    padding: 6px 20px;
-    border-radius: 30px;
+    justify-content: space-between;
+    background-color: #3c2f90;
+    border-radius: 999px;
+    padding: 4px;
+    min-width: 220px;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.metric-slider {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: calc(50% - 4px);
+    height: calc(100% - 8px);
+    border-radius: 999px;
+    background-color: #ffffff;
+    transition: left 0.3s ease;
+}
+
+.metric-toggle-revenue-active .metric-slider {
+    left: 4px;
+}
+
+.metric-toggle-units-active .metric-slider {
+    left: 50%;
+}
+
+.metric-tab {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 6px 0;
     cursor: pointer;
+}
+
+.metric-tab-left {
+    border-radius: 999px 0 0 999px;
+}
+
+.metric-tab-right {
+    border-radius: 0 999px 999px 0;
+}
+
+.metric-toggle-revenue-active #metric-tab-revenue {
+    color: #3c2f90;
+}
+
+.metric-toggle-units-active #metric-tab-units {
+    color: #3c2f90;
+}
+
+.date-range-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #3c2f90;
+    color: #ffffff;
+    border-radius: 999px;
+    padding: 10px 20px;
+    font-size: 14px;
+}
+
+.date-pill-dropdown {
+    min-width: 120px;
+}
+
+.date-pill-dropdown .Select-control {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #ffffff !important;
+}
+
+.date-pill-dropdown .Select-value-label,
+.date-pill-dropdown .Select-placeholder {
+    color: #ffffff !important;
+}
+
+.date-pill-dropdown .Select-arrow {
+    border-color: #ffffff transparent transparent !important;
+}
+
+.date-pill-dropdown .Select-menu-outer {
+    color: #1f2230;
+}
+
+.date-range-separator {
+    color: rgba(255, 255, 255, 0.8);
     font-weight: 600;
-    color: white;
-    transition: all 0.2s ease;
+    white-space: nowrap;
 }
 
-/* Selected state */
-.metric-toggle input:checked + span {
-    background-color: white;
-    color: #3d348b;
-}
-
-/* Span must be block for background */
-.metric-toggle span {
-    display: inline-block;
-    padding: 6px 20px;
-    border-radius: 30px;
+.date-range-icon {
+    width: 18px;
+    height: 18px;
+    margin-left: 2px;
+    background: url("/assets/clander_icon.png") no-repeat center center / contain;
 }
 
 :root {
-    --kpi-panel-bg: #ffffff;
     --kpi-body-bg: #f5f6f8;
-    --kpi-card-bg: #eef4ff;
-    --kpi-card-shadow: 0 12px 32px rgba(111, 133, 186, 0.15);
-    --kpi-panel-shadow: 0 18px 48px rgba(112, 125, 153, 0.18);
-    --kpi-icon-bg: #5e81f4;
+    --kpi-section-bg: #ffffff;
+    --kpi-card-bg: #f0f4ff;
+    --kpi-icon-bg: #d7def8;
     --kpi-positive: #1c9c68;
-    --kpi-negative: #c7364f;
+    --kpi-negative: #d14343;
 }
 
 body {
     background-color: var(--kpi-body-bg) !important;
 }
 
-.kpi-panel-wrapper {
+.dashboard-header {
     display: flex;
-    justify-content: center;
-    padding: 24px;
+    align-items: baseline;
+    gap: 16px;
+    padding: 36px 0 16px;
+    margin-bottom: 16px;
 }
 
-.kpi-panel {
-    width: 100%;
-    max-width: 1200px;
-    background: var(--kpi-panel-bg);
-    padding: 28px;
-    border-radius: 22px;
-    box-shadow: var(--kpi-panel-shadow);
+.dashboard-brand {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 14px;
+}
+
+.dashboard-logo {
+    height: 40px;
+    width: auto;
+    display: block;
+}
+
+.dashboard-title {
+    margin: 0;
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: #1f2230;
+    line-height: 1.1;
+}
+
+.kpi-section {
+    background: var(--kpi-section-bg);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin: 16px 0 12px;
+}
+
+.kpi-grid-empty {
+    text-align: center;
+    color: #6b7280;
+    font-size: 14px;
+    padding: 24px;
 }
 
 .kpi-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 18px;
+    gap: 14px;
 }
 
 .kpi-card {
     background: var(--kpi-card-bg);
-    border-radius: 18px;
-    padding: 18px 20px;
+    border-radius: 14px;
+    padding: 16px 22px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: var(--kpi-card-shadow);
+    box-shadow: none;
+    border: none;
 }
 
 .kpi-card-left {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    justify-content: center;
+}
+
+.kpi-card-content {
+    padding: 0;
     display: flex;
     flex-direction: column;
     gap: 6px;
 }
 
 .kpi-card-title {
-    font-size: 13px;
-    color: #6d6d72;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    font-size: 14px;
+    color: #5c6170;
+    font-weight: 600;
+}
+
+.kpi-value-group {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-wrap: wrap;
 }
 
 .kpi-card-value {
@@ -140,21 +256,21 @@ body {
     color: #1d2330;
 }
 
-.kpi-card-subtitle {
+.kpi-card-subtext {
     font-size: 12px;
-    color: #5a6074;
+    color: #7c8295;
 }
 
 .kpi-card-right {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 8px;
+    gap: 10px;
 }
 
 .kpi-icon-badge {
-    width: 38px;
-    height: 38px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: var(--kpi-icon-bg);
     display: flex;
@@ -162,11 +278,13 @@ body {
     justify-content: center;
 }
 
-.kpi-delta-group {
-    text-align: right;
+.kpi-delta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
     font-size: 12px;
     color: #7b8093;
-    line-height: 1.2;
 }
 
 .kpi-delta.positive {
@@ -180,33 +298,3 @@ body {
 .kpi-delta.neutral {
     color: #7b8093;
 }
-
-/* Trend Dropdown Styling */
-.trend-dropdown .Select-control {
-    border-radius: 24px !important;
-    background-color: #3d348b !important;
-    border: none !important;
-    padding: 4px 12px !important;
-    height: 44px !important;
-    cursor: pointer;
-}
-
-.trend-dropdown .Select-placeholder,
-.trend-dropdown .Select-value-label {
-    color: white !important;
-    font-weight: 600;
-}
-
-.trend-dropdown .Select-arrow {
-    border-color: white !important;
-}
-
-.trend-dropdown .Select-menu-outer {
-    border-radius: 12px !important;
-}
-
-.trend-dropdown .Select-option:hover {
-    background-color: #5d4ec4 !important;
-    color: white !important;
-}
-
