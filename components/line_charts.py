@@ -237,7 +237,12 @@ def layout():
                         [
                             html.H3(
                                 "Monthly Genre Performance By Publisher",
-                                style={"margin": "0 0 12px", "color": "#1e2553"},
+                                style={
+                                    "margin": "0 0 12px",
+                                    "color": "#1e2553",
+                                    "fontSize": "32px",
+                                    "whiteSpace": "nowrap",
+                                },
                             ),
                             html.Div(
                                 [

@@ -115,7 +115,13 @@ def layout():
         [
             html.H3(
                 "Game Title Performance",
-                style={"margin": "0 0 12px", "textAlign": "center", "color": "#1e2553"},
+                style={
+                    "margin": "0 0 12px",
+                    "textAlign": "center",
+                    "color": "#1e2553",
+                    "fontSize": "32px",
+                    "whiteSpace": "nowrap",
+                },
             ),
             dcc.Dropdown(
                 id="genre-bar-select",
