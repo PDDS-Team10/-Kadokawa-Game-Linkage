@@ -1,5 +1,6 @@
 from dash import html, dcc, Input, Output, callback
 import plotly.express as px
+import textwrap
 
 from utils.query import read_df
 
@@ -96,6 +97,11 @@ def _genre_bar_fig(df, genre, metric):
         title=None,
         color_discrete_sequence=custom_colors,
     )
+
+    # Wrap legend labels to avoid overly long single-line names
+    for trace in fig.data:
+        trace.name = "<br>".join(textwrap.wrap(trace.name, width=20)) or trace.name
+
     fig.update_layout(
         xaxis_title="Region",
         yaxis_title="Revenue (JPY)" if metric == "revenue" else "Units Sold",
@@ -109,7 +115,9 @@ def _genre_bar_fig(df, genre, metric):
             yanchor="top",
             y=0.95,
             xanchor="left",
-            x=1.02
+            x=1.02,
+            tracegroupgap=4,
+            itemwidth=80,
         ),
         yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.06)"),
         xaxis=dict(showgrid=False),
