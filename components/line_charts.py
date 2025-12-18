@@ -281,13 +281,13 @@ def layout():
                             ),
                             dcc.Graph(
                                 id="publisher-trend-graph",
-                                style={"height": "320px"},
+                                style={"height": "440px", "width": "100%"},
                             ),
                         ],
                         style={
                             "display": "flex",
                             "flexDirection": "column",
-                            "flex": 1,
+                            "flex": 2,
                         },
                     ),
                     bar_chart.layout(),
