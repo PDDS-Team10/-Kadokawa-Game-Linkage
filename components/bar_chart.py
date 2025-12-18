@@ -104,7 +104,7 @@ def _genre_bar_fig(df, genre, metric):
 
     fig.update_layout(
         xaxis_title="Region",
-        yaxis_title="Revenue (JPY)" if metric == "revenue" else "Units Sold",
+        yaxis_title="Revenue (JPY)" if metric = "revenue" else "Units Sold",
         margin=dict(l=24, r=160, t=34, b=60),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
@@ -122,7 +122,7 @@ def _genre_bar_fig(df, genre, metric):
             tracegroupgap=4,
         ),
         yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.06)"),
-        xaxis=dict(showgrid=False, domain=[0, 0.8], automargin=True),
+        xaxis=dict(showgrid=False, domain=[0, 2/3], automargin=True),
         height=440,
     )
     return fig
