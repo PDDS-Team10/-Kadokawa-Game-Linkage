@@ -93,7 +93,7 @@ def _genre_bar_fig(df, genre, metric):
         y=y_col,
         color="game_name",
         barmode="group",
-        title=f"Game Title Performance — {genre}",
+        title=None,
         color_discrete_sequence=custom_colors,
     )
     fig.update_layout(
@@ -113,6 +113,10 @@ def _genre_bar_fig(df, genre, metric):
 def layout():
     return html.Div(
         [
+            html.H3(
+                "Game Title Performance",
+                style={"margin": "0 0 12px", "textAlign": "center", "color": "#1e2553"},
+            ),
             dcc.Dropdown(
                 id="genre-bar-select",
                 options=[{"label": g, "value": g} for g in GENRE_LIST],
