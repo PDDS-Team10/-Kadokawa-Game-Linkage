@@ -7,9 +7,8 @@ from components import kpi_cards, publisher_overview, line_charts, map_chart
 
 MONTH_OPTIONS = [
     {"label": f"{y}-{m:02d}", "value": f"{y}-{m:02d}"}
-    for y in range(2022, 2025)
+    for y in range(2023, 2026)
     for m in range(1, 13)
-    if not (y == 2024 and m > 12)
 ]
 
 app = Dash(
@@ -28,9 +27,8 @@ app.title = "Kadokawa Game Dashboard"
 def update_end_options(start, end):
     all_options = [
         f"{y}-{m:02d}"
-        for y in range(2022, 2025)
+        for y in range(2023, 2026)
         for m in range(1, 13)
-        if not (y == 2024 and m > 12)
     ]
     end_options = [o for o in all_options if o >= start]
     if end < start:
@@ -83,7 +81,7 @@ app.layout = dbc.Container(
                         dcc.Dropdown(
                             id="global-start-ym",
                             options=MONTH_OPTIONS,
-                            value="2022-01",
+                            value="2023-01",
                             clearable=False,
                             searchable=False,
                             className="date-pill-dropdown",
@@ -92,7 +90,7 @@ app.layout = dbc.Container(
                         dcc.Dropdown(
                             id="global-end-ym",
                             options=MONTH_OPTIONS,
-                            value="2024-12",
+                            value="2025-12",
                             clearable=False,
                             searchable=False,
                             className="date-pill-dropdown",
@@ -104,9 +102,23 @@ app.layout = dbc.Container(
         ),
         html.Hr(),
         dcc.Location(id="url"),
-        publisher_overview.layout(),
-        html.Hr(),
-        line_charts.layout(),
+        html.Div(
+            id="publishers-section-card",
+            className="publishers-card",
+            children=[
+                publisher_overview.layout(),
+                html.Div(
+                    line_charts.layout(),
+                    style={
+                        "backgroundColor": "white",
+                        "borderRadius": "24px",
+                        "padding": "24px",
+                        "marginTop": "24px",
+                        "boxShadow": "0 4px 12px rgba(15, 23, 42, 0.04)",
+                    },
+                ),
+            ],
+        ),
         # map_chart.layout(),
     ],
     fluid=True,

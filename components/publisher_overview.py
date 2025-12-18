@@ -39,15 +39,15 @@ from utils.query import read_df
 
 def _normalize_month_range(start_ym, end_ym):
     if not start_ym:
-        start_ym = "2022-01"
+        start_ym = "2023-01"
     if not end_ym:
-        end_ym = "2024-12"
+        end_ym = "2025-12"
     if start_ym > end_ym:
         start_ym, end_ym = end_ym, start_ym
     return start_ym, end_ym
 
 
-def _publisher_df(start_ym = "2022-01", end_ym = "2024-12"): # order = "ASC", limit = 5, 
+def _publisher_df(start_ym = "2023-01", end_ym = "2025-12"): # order = "ASC", limit = 5, 
     sql = f"""
     SELECT 
         p.publisher_name,
@@ -106,17 +106,20 @@ def _publisher_treemap(df, mode_label, metric = "revenue"):
                         f"{title_metric}: " 
                         "%{customdata[1]:,.0f}"
                         "<extra></extra>",
+        marker = dict(line = dict(width = 0, color = "rgba(0,0,0,0)")),
     )
 
     fig.update_layout(
         margin = dict(l = 0, r = 10, t = 40, b = 10),
         height = 380,
-        title_x = 0
+        title_x = 0,
+        paper_bgcolor = "rgba(0,0,0,0)",
+        plot_bgcolor = "rgba(0,0,0,0)",
     )
     return fig
 
 
-def _games_df_for_publisher(publisher_name, start_ym = "2022-01", end_ym = "2024-12"):
+def _games_df_for_publisher(publisher_name, start_ym = "2023-01", end_ym = "2025-12"):
     sql = """
     SELECT 
         g.game_name,
@@ -221,99 +224,55 @@ def _publisher_games_pie(publisher_name, start_ym, end_ym, metric = "revenue"):
 # ---------- layout ----------
 
 def layout():
-    """
-    Layout for the Publisher Overview section.
-
-    Contains:
-    - H3 title.
-    - Three buttons (Worst 5 / Top 5 / Clear selection).
-    - A flex row:
-        - Left: treemap (publisher overview).
-        - Right: pie chart (game share for selected publisher).
-
-    In comment:
-    - 按鈕樣式可以直接改 style 裡的顏色、padding、邊框
-    """
     return html.Div(
         [
-            dcc.Store(id = "publisher-selected"),
-            html.H3("Publishers Overview", style = {"marginBottom": "8px"}),
-
+            dcc.Store(id="publisher-selected"),
             html.Div(
                 [
-                    html.Button(
-                        "Top 5",
-                        id = "publisher-top-btn",
-                        n_clicks = 0,
-                        style = {
-                            "marginRight": "10px",
-                            "padding": "6px 16px",
-                            "borderRadius": "6px",
-                            "background": "#264a7f",
-                            "color": "white",
-                            "border": "none",
-                            "minWidth": "90px"
-                        },
+                    html.H2("Publishers Overview", className="section-title"),
+                    html.Div(
+                        [
+                            html.Div(className="publisher-slider"),
+                            html.Button(
+                                "Top 5",
+                                id="publisher-top-btn",
+                                n_clicks=0,
+                                className="publisher-pill-tab publisher-pill-left",
+                            ),
+                            html.Button(
+                                "Worst 5",
+                                id="publisher-worst-btn",
+                                n_clicks=0,
+                                className="publisher-pill-tab publisher-pill-right",
+                            ),
+                        ],
+                        id="publisher-toggle-pill",
+                        className="publisher-pill top-active",
                     ),
-                    html.Button(
-                        "Worst 5",
-                        id = "publisher-worst-btn",
-                        n_clicks = 0,
-                        style = {
-                            "marginRight": "10px",
-                            "padding": "6px 16px",
-                            "borderRadius": "6px",
-                            "background": "#a5c0dd",
-                            "color": "white",
-                            "border": "none",
-                            "minWidth": "60px"
-                        },
-                    ),
-                    # html.Button(
-                    #     "Clear selection",
-                    #     id = "publisher-clear-btn",
-                    #     n_clicks = 0,
-                    #     style = {
-                    #         "padding": "6px 16px",
-                    #         "borderRadius": "6px",
-                    #         "background": "#f0f0f0",
-                    #         "color": "#333",
-                    #         "border": "1px solid #ccc",
-                    #     },
-                    # ),
                 ],
-                style = {"marginBottom": "16px"},
+                className="section-header",
             ),
-            # Main content: treemap (left) + games pie (right)
             html.Div(
                 [
                     html.Div(
-                        [
-                            dcc.Graph(
-                                id = "publisher-overview-graph",
-                                style = {"height": "380px"},
-                                config = {
-                                    "doubleClick": False,
-                                    "displayModeBar": True,
-                                },
-                            ),
-                        ],
-                        style = {"flex": "3", "marginRight": "16px"},
+                        dcc.Graph(
+                            id="publisher-overview-graph",
+                            style={"height": "360px"},
+                            config={"doubleClick": False, "displayModeBar": True},
+                        ),
+                        style={"flex": 2.2, "marginRight": "24px"},
                     ),
                     html.Div(
-                        [
-                            dcc.Graph(
-                                id = "publisher-games-pie",
-                                style = {"height": "380px"},
-                            ),
-                        ],
-                        style = {"flex": "2"},
+                        dcc.Graph(
+                            id="publisher-games-pie",
+                            style={"height": "360px"},
+                        ),
+                        style={"flex": 1, "minWidth": "260px"},
                     ),
                 ],
-                style = {"display": "flex", "flexDirection": "row"},
+                style={"display": "flex", "alignItems": "stretch"},
             ),
-        ],
-        style = {"marginBottom": "24px"},
+        ]
     )
 
 
@@ -322,7 +281,8 @@ def layout():
 @callback(
     Output("publisher-overview-graph", "figure"),
     Output("publisher-games-pie", "figure"),
-    Output("publisher-selected", "data"), 
+    Output("publisher-selected", "data"),
+    Output("publisher-toggle-pill", "className"),
     Input("publisher-worst-btn", "n_clicks"),
     Input("publisher-top-btn", "n_clicks"),
     # Input("publisher-clear-btn", "n_clicks"),
@@ -374,6 +334,12 @@ def update_publisher_overview(
         order = "DESC"      # 預設是 Top
         mode_label = "Top"
 
+    pill_class = (
+        "publisher-pill top-active"
+        if mode_label == "Top"
+        else "publisher-pill worst-active"
+    )
+
     df_pub = _publisher_df(start_ym = start_ym, end_ym = end_ym) # order = order, limit = 5, 
     treemap_fig = _publisher_treemap(df_pub, mode_label, metric)
     # Pie chart 預設為空白
@@ -382,7 +348,7 @@ def update_publisher_overview(
     # Metric toggle or Top/Worst 都：不保留選取，不畫 pie
     if trigger_id in ("metric-toggle", "publisher-top-btn", "publisher-worst-btn"):
         selected_publisher = None
-        return treemap_fig, pie_fig, selected_publisher
+        return treemap_fig, pie_fig, selected_publisher, pill_class
 
     # # 如果是切換 metric：treemap 重新畫（回到 Top/Worst 初始狀態）
     # if trigger_id == "metric-toggle":
@@ -400,16 +366,16 @@ def update_publisher_overview(
         "global-start-ym",
         "global-end-ym",
     ):
-        treemap_fig = _publisher_treemap(df_pub, mode_label)
+        treemap_fig = _publisher_treemap(df_pub, mode_label, metric)
     else:
         treemap_fig = no_update
 
     # 沒資料就直接回空圖
     if df_pub.empty:
         if treemap_fig is no_update:
-            treemap_fig = _publisher_treemap(df_pub, mode_label)
+            treemap_fig = _publisher_treemap(df_pub, mode_label, metric)
         pie_fig = _empty_pie_placeholder("No publisher data")
-        return treemap_fig, pie_fig, None
+        return treemap_fig, pie_fig, None, pill_class
 
     # Clear 按鈕：只清右邊 pie
     # if trigger_id == "publisher-clear-btn":
@@ -449,4 +415,4 @@ def update_publisher_overview(
         pie_fig = _empty_pie_placeholder("Select a publisher from treemap")
         selected_publisher = None
 
-    return treemap_fig, pie_fig, selected_publisher
+    return treemap_fig, pie_fig, selected_publisher, pill_class
