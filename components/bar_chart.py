@@ -122,7 +122,7 @@ def layout():
                 options=[{"label": g, "value": g} for g in GENRE_LIST],
                 value=GENRE_LIST[0],
                 clearable=False,
-                className="pill-dropdown",
+                className="pill-dropdown pill-dropdown--single",
                 style={"width": "220px", "margin": "0 auto 12px"},
             ),
             dcc.Graph(id="genre-bar-graph", style={"height": "320px"}),

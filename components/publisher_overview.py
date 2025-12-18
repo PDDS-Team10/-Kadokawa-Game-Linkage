@@ -110,7 +110,7 @@ def _publisher_treemap(df, mode_label, metric = "revenue"):
     )
 
     fig.update_layout(
-        margin = dict(l = 0, r = 10, t = 40, b = 10),
+        margin = dict(l = 0, r = 10, t = 70, b = 10),
         height = 380,
         title_x = 0,
         paper_bgcolor = "rgba(0,0,0,0)",
@@ -199,7 +199,6 @@ def _publisher_games_pie(publisher_name, start_ym, end_ym, metric = "revenue"):
         df_top,
         names = "game_name",
         values = metric,
-        title = f"Games { 'Revenue' if metric == 'revenue' else 'Units Sold' } Share – {publisher_name}",
         color = "game_name",
         color_discrete_sequence = custom_colors,
     )
@@ -216,7 +215,9 @@ def _publisher_games_pie(publisher_name, start_ym, end_ym, metric = "revenue"):
     )
 
     fig.update_layout(
-        margin = dict(l = 10, r = 10, t = 40, b = 10),
+        title = pie_title_for_publisher(publisher_name),
+        title_x = 0.5,
+        margin = dict(l = 40, r = 40, t = 80, b = 40),
         height = 380,
     )
     return fig
@@ -416,3 +417,8 @@ def update_publisher_overview(
         selected_publisher = None
 
     return treemap_fig, pie_fig, selected_publisher, pill_class
+def pie_title_for_publisher(publisher_name: str) -> str:
+    """
+    Always render title in two lines to prevent clipping regardless of length.
+    """
+    return f"Games Revenue Share<br><sup>{publisher_name}</sup>"
