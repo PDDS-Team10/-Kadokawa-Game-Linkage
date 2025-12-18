@@ -1,5 +1,0 @@
-<<<<<<< HEAD
-python-3.12.12
-=======
-python-3.11.8
->>>>>>> heroku/main
