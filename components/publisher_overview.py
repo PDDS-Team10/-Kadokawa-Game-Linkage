@@ -2,20 +2,33 @@
 #
 # Publisher Overview section
 #
-# This component shows:
-#   - A treemap of publishers (Top 5 / Worst 5 by revenue).
-#   - A pie chart of game revenue share for the hovered publisher.
+# This component displays two coordinated visualizations:
+#   1. A treemap showing the Top 5 or Worst 5 publishers,
+#      based on either revenue or units sold.
+#   2. A pie chart breaking down the selected publisher’s game-level revenue
+#      or units sold.
 #
 # Interaction:
-#   - "Top 5" / "Worst 5" buttons switch the treemap mode.
-#   - Hovering on a publisher block in the treemap updates the pie chart on the right.
-#   - Global date range (`global-start-ym`, `global-end-ym`) affects both charts.
+#   - The "Top 5" and "Worst 5" buttons switch the ranking mode used in the treemap.
+#   - Clicking a publisher in the treemap updates the pie chart to show
+#     that publisher’s top titles.
+#   - The global date range (`global-start-ym`, `global-end-ym`) filters both charts.
+#   - The metric toggle (`metric-toggle`) switches all calculations and color scales
+#     between revenue and units sold.
+#   - Clicking inside the treemap also triggers zoom-in/zoom-out interactions
+#     provided by Plotly.
 #
 # For teammates:
-# - To change the visual style (height, colors, text), you can edit `layout()` and
-#   the figure builders `_publisher_treemap` / `_publisher_games_pie`.
-# - To change the logic of "Top/Worst 5", adjust `_publisher_df` and the part in
-#   `update_publisher_overview` that decides `order` and `mode_label`.
+#   - To adjust visual styling (layout spacing, colors, height), edit `layout()`
+#     or the figure builder functions `_publisher_treemap()` and
+#     `_publisher_games_pie()`.
+#
+#   - To modify ranking logic for Top/Worst 5, update `_publisher_df()` and the
+#     logic in `update_publisher_overview()` that determines the `order` and
+#     `mode_label` values.
+#
+#   - If new metrics are needed in the future, extend `_publisher_df()` and ensure
+#     the treemap and pie chart functions read from the appropriate column.
 
 import pandas as pd
 from dash import html, dcc, Input, Output, callback, ctx, no_update, State

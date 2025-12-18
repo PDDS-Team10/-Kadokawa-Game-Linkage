@@ -1,19 +1,32 @@
 # components/line_charts.py
 #
-# This component shows two line charts in the middle section of the dashboard:
-#   - Genre trend over time
-#   - Publisher trend over time
+# This component provides two visualizations in the lower section of the dashboard:
+#   1. A line chart showing monthly genre performance
+#      based on the selected genre(s), publisher, and metric.
+#   2. A bar chart showing game title performance across regions
+#      for a selected genre, also based on the selected metric.
 #
 # Both charts:
-#   - Use the global year-month filters (`global-start-ym`, `global-end-ym`).
-#   - Share the same metric toggle: "Revenue" or "Units Sold".
+#   - Respond to the global date range (`global-start-ym`, `global-end-ym`).
+#   - Use the shared metric toggle (`metric-toggle`) to switch between
+#     Revenue and Units Sold.
 #
-# For teammates (especially front-end):
-# - If you want to change layout (e.g., height, titles, flex layout),
-#   you can usually do it inside `layout()`.
-# - If you want to add a new trend chart (e.g., by Platform),
-#   you can copy `_genre_trend_df` / `_genre_trend_fig` as a template and
-#   add a new Graph + one more Output in `update_trend_charts`.
+# Interaction:
+#   - Users can select multiple genres and one publisher to filter the line chart.
+#   - Users can select a genre to update the regional bar chart.
+#   - Both charts update dynamically based on date range and metric selection.
+#
+# For teammates:
+#   - Layout-related adjustments (spacing, sizing, titles, flex behavior) should
+#     be made in `layout()`.
+#
+#   - To add a new trend visualization (e.g., performance by platform or region),
+#     create a new figure builder and add an additional Graph component plus a
+#     corresponding Output in the callback.
+#
+#   - To modify the data logic, update the helper functions:
+#       * `_genre_publisher_trend_df()` for the line chart
+#       * `_genre_bar_df()` for the bar chart
 
 from dash import html, dcc, Input, Output, callback
 import plotly.express as px
