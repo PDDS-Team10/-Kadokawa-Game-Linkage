@@ -287,7 +287,7 @@ def layout():
                         style={
                             "display": "flex",
                             "flexDirection": "column",
-                            "flex": 1,
+                            "flex": 2,
                         },
                     ),
                     bar_chart.layout(),
