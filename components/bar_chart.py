@@ -103,14 +103,7 @@ def _genre_bar_fig(df, genre, metric):
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         bargap=0.22,
-        legend=dict(
-            title_text="",
-            font=dict(size=12),
-            yanchor="top",
-            y=0.95,
-            xanchor="left",
-            x=1.02
-        ),
+        legend=dict(title_text=""),
         yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.06)"),
         xaxis=dict(showgrid=False),
     )
