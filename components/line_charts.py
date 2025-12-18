@@ -31,7 +31,7 @@
 from dash import html, dcc, Input, Output, State, callback
 import plotly.express as px
 from utils.query import read_df
-from . import genre_bar_chart
+from . import bar_chart
 
 GENRE_LIST = [
     "Action", "Adventure", "Fighting", "Misc", "Platform",
@@ -242,23 +242,28 @@ def layout():
                             html.Div(
                                 [
                                     dcc.Dropdown(
-                                        id="trend-genre-select",
-                                        options=[{"label": g, "value": g} for g in GENRE_LIST],
-                                        multi=True,
-                                        clearable=False,
-                                        value=[GENRE_LIST[0]],
-                                        className="pill-dropdown",
-                                    ),
-                                    dcc.Dropdown(
                                         id="trend-publisher-select",
                                         options=[{"label": p, "value": p} for p in PUBLISHER_LIST],
                                         multi=False,
                                         clearable=False,
                                         value="Nintendo",
-                                        className="pill-dropdown",
+                                        className="pill-dropdown pill-dropdown--single",
                                         style={
                                             "minWidth": "240px",
                                             "maxWidth": "280px",
+                                        },
+                                    ),
+                                    dcc.Dropdown(
+                                        id="trend-genre-select",
+                                        options=[{"label": g, "value": g} for g in GENRE_LIST],
+                                        multi=True,
+                                        clearable=False,
+                                        value=[GENRE_LIST[0]],
+                                        className="pill-dropdown pill-dropdown--multi",
+                                        style={
+                                            "minWidth": "240px",
+                                            "maxWidth": "280px",
+                                            "width": "280px",
                                         },
                                     ),
                                 ],
@@ -280,7 +285,7 @@ def layout():
                             "flex": 1,
                         },
                     ),
-                    genre_bar_chart.layout(),
+                    bar_chart.layout(),
                 ],
                 style={
                     "display": "flex",
