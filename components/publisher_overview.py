@@ -2,56 +2,69 @@
 #
 # Publisher Overview section
 #
-# This component shows:
-#   - A treemap of publishers (Top 5 / Worst 5 by revenue).
-#   - A pie chart of game revenue share for the hovered publisher.
+# This component displays two coordinated visualizations:
+#   1. A treemap showing the Top 5 or Worst 5 publishers,
+#      based on either revenue or units sold.
+#   2. A pie chart breaking down the selected publisher’s game-level revenue
+#      or units sold.
 #
 # Interaction:
-#   - "Worst 5" / "Top 5" buttons switch the treemap mode.
-#   - Hovering on a publisher block in the treemap updates the pie chart on the right.
-#   - "Clear selection" resets the pie chart to a placeholder state.
-#   - Global date range (`global-start-ym`, `global-end-ym`) affects both charts.
+#   - The "Top 5" and "Worst 5" buttons switch the ranking mode used in the treemap.
+#   - Clicking a publisher in the treemap updates the pie chart to show
+#     that publisher’s top titles.
+#   - The global date range (`global-start-ym`, `global-end-ym`) filters both charts.
+#   - The metric toggle (`metric-toggle`) switches all calculations and color scales
+#     between revenue and units sold.
+#   - Clicking inside the treemap also triggers zoom-in/zoom-out interactions
+#     provided by Plotly.
 #
 # For teammates:
-# - To change the visual style (height, colors, text), you can edit `layout()` and
-#   the figure builders `_publisher_treemap` / `_publisher_games_pie`.
-# - To change the logic of "Top/Worst 5", adjust `_publisher_df` and the part in
-#   `update_publisher_overview` that decides `order` and `mode_label`.
+#   - To adjust visual styling (layout spacing, colors, height), edit `layout()`
+#     or the figure builder functions `_publisher_treemap()` and
+#     `_publisher_games_pie()`.
+#
+#   - To modify ranking logic for Top/Worst 5, update `_publisher_df()` and the
+#     logic in `update_publisher_overview()` that determines the `order` and
+#     `mode_label` values.
+#
+#   - If new metrics are needed in the future, extend `_publisher_df()` and ensure
+#     the treemap and pie chart functions read from the appropriate column.
 
+import pandas as pd
 from dash import html, dcc, Input, Output, callback, ctx, no_update, State
 import plotly.express as px
 from utils.query import read_df
-
 
 # ---------- helpers ----------
 
 def _normalize_month_range(start_ym, end_ym):
     if not start_ym:
-        start_ym = "2022-01"
+        start_ym = "2023-01"
     if not end_ym:
-        end_ym = "2024-12"
+        end_ym = "2025-12"
     if start_ym > end_ym:
         start_ym, end_ym = end_ym, start_ym
     return start_ym, end_ym
 
 
-def _publisher_df(order = "ASC", limit = 5, start_ym = "2022-01", end_ym = "2024-12"):
+def _publisher_df(start_ym = "2023-01", end_ym = "2025-12"): # order = "ASC", limit = 5, 
     sql = f"""
     SELECT 
         p.publisher_name,
-        SUM(m.revenue_jpy) AS revenue
+        SUM(m.revenue_jpy) AS revenue,  
+        SUM(m.sales_units)  AS units
     FROM SaleMonthly m
     JOIN GAME g      ON m.game_id = g.game_id
     JOIN PUBLISHER p ON g.publisher_id = p.publisher_id
     WHERE m.year_month BETWEEN ? AND ?
-    GROUP BY p.publisher_name
-    ORDER BY revenue {order}
-    LIMIT ?;
+    GROUP BY p.publisher_name;
     """
-    return read_df(sql, [start_ym, end_ym, limit])
+    # ORDER BY revenue {order}
+    # LIMIT ?;
+    return read_df(sql, [start_ym, end_ym]) # , limit
 
 
-def _publisher_treemap(df, mode_label):
+def _publisher_treemap(df, mode_label, metric = "revenue"):
     """
     Build the treemap for publishers.
 
@@ -59,75 +72,96 @@ def _publisher_treemap(df, mode_label):
     - Color is still mapped to raw revenue.
     """
     df = df.copy()
-    df["area_value"] = (df["revenue"].clip(lower = 0) ** 0.5)
 
-    # 排序確保 Top/Worst 左上位置正確
-    if mode_label == "Top":
-        df = df.sort_values("revenue", ascending = False)
-    else:  # Worst
-        df = df.sort_values("revenue", ascending = True)
+    # 調整要顯示的欄位
+    metric_col = "revenue" if metric == "revenue" else "units"
+
+    df["area_value"] = (df[metric_col].clip(lower = 0) ** 0.5)
+
+    # 排序方式（Top = DESC, Worst = ASC）
+    ascending = (mode_label == "Worst")
+    df = df.sort_values(metric_col, ascending = ascending).head()
+
+    # # 排序確保 Top/Worst 左上位置正確
+    # if mode_label == "Top":
+    #     df = df.sort_values("revenue", ascending = False)
+    # else:  # Worst
+    #     df = df.sort_values("revenue", ascending = True)
+
+    title_metric = "Revenue" if metric == "revenue" else "Units Sold"
 
     fig = px.treemap(
         df,
         path = ["publisher_name"],
         values = "area_value",
-        color = "revenue",
+        color = metric_col,
         color_continuous_scale = "Blues",
-        title = f"{mode_label} 5 Publishers by Revenue",
+        title = f"{mode_label} 5 Publishers by {title_metric}",
     )
 
     # Custom hover text to show nicely formatted revenue
     fig.update_traces(
-        customdata = df[["publisher_name", "revenue"]].to_numpy(),
+        customdata = df[["publisher_name", metric_col]].to_numpy(),
         hovertemplate = "<b>%{label}</b><br>"
-                      "Revenue: %{customdata[1]:,.0f} JPY<extra></extra>",
+                        f"{title_metric}: " 
+                        "%{customdata[1]:,.0f}"
+                        "<extra></extra>",
+        marker = dict(line = dict(width = 0, color = "rgba(0,0,0,0)")),
     )
 
     fig.update_layout(
         margin = dict(l = 0, r = 10, t = 40, b = 10),
         height = 380,
-        title_x = 0
+        title_x = 0,
+        paper_bgcolor = "rgba(0,0,0,0)",
+        plot_bgcolor = "rgba(0,0,0,0)",
     )
     return fig
 
 
-def _games_df_for_publisher(publisher_name, start_ym="2022-01", end_ym="2024-12", limit=8):
+def _games_df_for_publisher(publisher_name, start_ym = "2023-01", end_ym = "2025-12"):
     sql = """
     SELECT 
         g.game_name,
-        SUM(m.revenue_jpy) AS revenue
+        SUM(m.revenue_jpy) AS revenue,
+        SUM(m.sales_units) AS units
     FROM SaleMonthly m
     JOIN GAME g      ON m.game_id = g.game_id
     JOIN PUBLISHER p ON g.publisher_id = p.publisher_id
     WHERE p.publisher_name = ?
       AND m.year_month BETWEEN ? AND ?
     GROUP BY g.game_name
-    ORDER BY revenue DESC
-    LIMIT ?;
+    ORDER BY revenue DESC;
     """
-    return read_df(sql, [publisher_name, start_ym, end_ym, limit])
+    return read_df(sql, [publisher_name, start_ym, end_ym])
 
-
-def _publisher_games_pie(publisher_name, start_ym, end_ym):
+def _top3_with_others(df, value_col = "revenue"):
     """
-    Build the pie chart for one publisher's game revenue share.
+    df: game_name, revenue (或 units)
+    value_col: "revenue" 或 "units"
     """
-    df = _games_df_for_publisher(publisher_name, start_ym=start_ym, end_ym=end_ym)
-    if df.empty:
-        return _empty_pie_placeholder(f"{publisher_name}: no game data")
 
-    fig = px.pie(
-        df,
-        names="game_name",
-        values="revenue",
-        title=f"Games Revenue Share – {publisher_name}",
-    )
-    fig.update_layout(
-        margin=dict(l=10, r=10, t=40, b=10),
-        height=380,
-    )
-    return fig
+    # 排序
+    df_sorted = df.sort_values(value_col, ascending = False)
 
+    if len(df_sorted) <= 3:
+        return df_sorted  # 不需要合併 Others
+
+    # Top 3
+    top3 = df_sorted.iloc[:3].copy()
+
+    # Others
+    others_value = df_sorted.iloc[3:][value_col].sum()
+
+    others_row = pd.DataFrame([{
+        "game_name": "Others",
+        value_col: others_value
+    }])
+
+    # 合併成正式資料
+    final_df = pd.concat([top3, others_row], ignore_index = True)
+
+    return final_df
 
 def _empty_pie_placeholder(message = "Select a publisher from treemap"):
     """
@@ -145,103 +179,100 @@ def _empty_pie_placeholder(message = "Select a publisher from treemap"):
     )
     return fig
 
+def _publisher_games_pie(publisher_name, start_ym, end_ym, metric = "revenue"):
+    """
+    Build the pie chart for one publisher's game revenue share.
+    """
+    df = _games_df_for_publisher(publisher_name, start_ym = start_ym, end_ym = end_ym)
+
+    if df.empty:
+        return _empty_pie_placeholder(f"{publisher_name}: no game data")
+    
+    df_top = _top3_with_others(df, value_col = metric)
+
+    # 加 custom_data 以便 hover 顯示 value
+    df_top["formatted_value"] = df_top[metric].apply(lambda x: f"{x:,.0f}")
+
+    custom_colors = ['#264a7f', '#5d85b3', '#a5c0dd', '#dce6f2']  # 深 → 淺
+
+    fig = px.pie(
+        df_top,
+        names = "game_name",
+        values = metric,
+        title = f"Games { 'Revenue' if metric == 'revenue' else 'Units Sold' } Share – {publisher_name}",
+        color = "game_name",
+        color_discrete_sequence = custom_colors,
+    )
+
+    label_name = "Revenue" if metric == "revenue" else "Units Sold"
+
+    fig.update_traces(
+        textinfo = "percent",
+        customdata = df_top["formatted_value"].to_numpy().reshape(-1, 1),
+        hovertemplate = "<b>%{label}</b><br>" +
+                        f"{label_name}: " + 
+                        "%{customdata[0]}<br>" + 
+                        "Percent: %{percent}"
+    )
+
+    fig.update_layout(
+        margin = dict(l = 10, r = 10, t = 40, b = 10),
+        height = 380,
+    )
+    return fig
 
 # ---------- layout ----------
 
 def layout():
-    """
-    Layout for the Publisher Overview section.
-
-    Contains:
-    - H3 title.
-    - Three buttons (Worst 5 / Top 5 / Clear selection).
-    - A flex row:
-        - Left: treemap (publisher overview).
-        - Right: pie chart (game share for selected publisher).
-
-    In comment:
-    - 按鈕樣式可以直接改 style 裡的顏色、padding、邊框
-    """
     return html.Div(
         [
-            dcc.Store(id = "publisher-selected"),
-            html.H3("Publishers Overview", style = {"marginBottom": "8px"}),
-
+            dcc.Store(id="publisher-selected"),
             html.Div(
                 [
-                    html.Button(
-                        "Top 5",
-                        id = "publisher-top-btn",
-                        n_clicks = 0,
-                        style = {
-                            "marginRight": "10px",
-                            "padding": "6px 16px",
-                            "borderRadius": "6px",
-                            "background": "#5cb85c",
-                            "color": "white",
-                            "border": "none",
-                            "minWidth": "90px"
-                        },
+                    html.H2("Publishers Overview", className="section-title"),
+                    html.Div(
+                        [
+                            html.Div(className="publisher-slider"),
+                            html.Button(
+                                "Top 5",
+                                id="publisher-top-btn",
+                                n_clicks=0,
+                                className="publisher-pill-tab publisher-pill-left",
+                            ),
+                            html.Button(
+                                "Worst 5",
+                                id="publisher-worst-btn",
+                                n_clicks=0,
+                                className="publisher-pill-tab publisher-pill-right",
+                            ),
+                        ],
+                        id="publisher-toggle-pill",
+                        className="publisher-pill top-active",
                     ),
-                    html.Button(
-                        "Worst 5",
-                        id = "publisher-worst-btn",
-                        n_clicks = 0,
-                        style = {
-                            "marginRight": "10px",
-                            "padding": "6px 16px",
-                            "borderRadius": "6px",
-                            "background": "#d9534f",
-                            "color": "white",
-                            "border": "none",
-                            "minWidth": "60px"
-                        },
-                    ),
-                    # html.Button(
-                    #     "Clear selection",
-                    #     id = "publisher-clear-btn",
-                    #     n_clicks = 0,
-                    #     style = {
-                    #         "padding": "6px 16px",
-                    #         "borderRadius": "6px",
-                    #         "background": "#f0f0f0",
-                    #         "color": "#333",
-                    #         "border": "1px solid #ccc",
-                    #     },
-                    # ),
                 ],
-                style = {"marginBottom": "16px"},
+                className="section-header",
             ),
-            # Main content: treemap (left) + games pie (right)
             html.Div(
                 [
                     html.Div(
-                        [
-                            dcc.Graph(
-                                id = "publisher-overview-graph",
-                                style = {"height": "380px"},
-                                config = {
-                                    "doubleClick": False,
-                                    "displayModeBar": True,
-                                },
-                            ),
-                        ],
-                        style = {"flex": "3", "marginRight": "16px"},
+                        dcc.Graph(
+                            id="publisher-overview-graph",
+                            style={"height": "360px"},
+                            config={"doubleClick": False, "displayModeBar": True},
+                        ),
+                        style={"flex": 2.2, "marginRight": "24px"},
                     ),
                     html.Div(
-                        [
-                            dcc.Graph(
-                                id = "publisher-games-pie",
-                                style = {"height": "380px"},
-                            ),
-                        ],
-                        style = {"flex": "2"},
+                        dcc.Graph(
+                            id="publisher-games-pie",
+                            style={"height": "360px"},
+                        ),
+                        style={"flex": 1, "minWidth": "260px"},
                     ),
                 ],
-                style = {"display": "flex", "flexDirection": "row"},
+                style={"display": "flex", "alignItems": "stretch"},
             ),
-        ],
-        style = {"marginBottom": "24px"},
+        ]
     )
 
 
@@ -250,11 +281,13 @@ def layout():
 @callback(
     Output("publisher-overview-graph", "figure"),
     Output("publisher-games-pie", "figure"),
-    Output("publisher-selected", "data"), 
+    Output("publisher-selected", "data"),
+    Output("publisher-toggle-pill", "className"),
     Input("publisher-worst-btn", "n_clicks"),
     Input("publisher-top-btn", "n_clicks"),
     # Input("publisher-clear-btn", "n_clicks"),
     Input("publisher-overview-graph", "clickData"),
+    Input("metric-toggle", "value"), # "revenue" or "units"
     Input("global-start-ym", "value"),
     Input("global-end-ym", "value"),
 
@@ -265,6 +298,7 @@ def update_publisher_overview(
     n_top,
     # n_clear,
     click_data,
+    metric,
     start_ym,
     end_ym,
     selected_publisher
@@ -300,12 +334,29 @@ def update_publisher_overview(
         order = "DESC"      # 預設是 Top
         mode_label = "Top"
 
-    df_pub = _publisher_df(order = order, limit = 5, start_ym = start_ym, end_ym = end_ym)
-    treemap_fig = _publisher_treemap(df_pub, mode_label)
+    pill_class = (
+        "publisher-pill top-active"
+        if mode_label == "Top"
+        else "publisher-pill worst-active"
+    )
 
-    # --- 如果是切換 Top/Worst：直接回傳空 pie ---
-    if trigger_id in ("publisher-top-btn", "publisher-worst-btn"):
-        return treemap_fig, _empty_pie_placeholder("Select a publisher from treemap"), None
+    df_pub = _publisher_df(start_ym = start_ym, end_ym = end_ym) # order = order, limit = 5, 
+    treemap_fig = _publisher_treemap(df_pub, mode_label, metric)
+    # Pie chart 預設為空白
+    pie_fig = _empty_pie_placeholder("Select a publisher from treemap")
+
+    # Metric toggle or Top/Worst 都：不保留選取，不畫 pie
+    if trigger_id in ("metric-toggle", "publisher-top-btn", "publisher-worst-btn"):
+        selected_publisher = None
+        return treemap_fig, pie_fig, selected_publisher, pill_class
+
+    # # 如果是切換 metric：treemap 重新畫（回到 Top/Worst 初始狀態）
+    # if trigger_id == "metric-toggle":
+    #     return treemap_fig, _empty_pie_placeholder("Select a publisher from treemap"), None
+
+    # # --- 如果是切換 Top/Worst：直接回傳空 pie ---
+    # if trigger_id in ("publisher-top-btn", "publisher-worst-btn"):
+    #     return treemap_fig, _empty_pie_placeholder("Select a publisher from treemap"), None
 
     # Treemap：初始載入 / Top/Worst 切換 / 日期改變，都要重畫
     if trigger_id in (
@@ -315,16 +366,16 @@ def update_publisher_overview(
         "global-start-ym",
         "global-end-ym",
     ):
-        treemap_fig = _publisher_treemap(df_pub, mode_label)
+        treemap_fig = _publisher_treemap(df_pub, mode_label, metric)
     else:
         treemap_fig = no_update
 
     # 沒資料就直接回空圖
     if df_pub.empty:
         if treemap_fig is no_update:
-            treemap_fig = _publisher_treemap(df_pub, mode_label)
+            treemap_fig = _publisher_treemap(df_pub, mode_label, metric)
         pie_fig = _empty_pie_placeholder("No publisher data")
-        return treemap_fig, pie_fig, None
+        return treemap_fig, pie_fig, None, pill_class
 
     # Clear 按鈕：只清右邊 pie
     # if trigger_id == "publisher-clear-btn":
@@ -347,6 +398,7 @@ def update_publisher_overview(
             clicked_name,
             start_ym = start_ym,
             end_ym = end_ym,
+            metric = metric
         )
         selected_publisher = clicked_name
 
@@ -363,4 +415,4 @@ def update_publisher_overview(
         pie_fig = _empty_pie_placeholder("Select a publisher from treemap")
         selected_publisher = None
 
-    return treemap_fig, pie_fig, selected_publisher
+    return treemap_fig, pie_fig, selected_publisher, pill_class
