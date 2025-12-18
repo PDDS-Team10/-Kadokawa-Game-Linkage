@@ -15,6 +15,7 @@ app = Dash(
     __name__,
     external_stylesheets=[dbc.themes.BOOTSTRAP],
 )
+server = app.server
 app.title = "Kadokawa Game Dashboard"
 
 
