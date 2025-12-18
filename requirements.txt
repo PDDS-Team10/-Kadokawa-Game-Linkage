@@ -1,46 +1,9 @@
-blinker==1.9.0
-Bottleneck @ file:///home/task_176193794916414/conda-bld/bottleneck_1761937997056/work
-certifi==2025.10.5
-charset-normalizer==3.4.4
-click==8.3.0
-dash==3.2.0
-dash-bootstrap-components==2.0.4
-dash-iconify==0.1.2
-dash_daq==0.6.0
-et_xmlfile==2.0.0
-Flask==3.1.2
-geopandas==1.1.1
-greenlet==3.2.4
-gunicorn==23.0.0
-idna==3.11
-importlib_metadata==8.7.0
-itsdangerous==2.2.0
-Jinja2==3.1.6
-MarkupSafe==3.0.3
-mkl-service==2.5.2
-mkl_fft @ file:///home/task_176159252635933/conda-bld/mkl_fft_1761592902019/work
-mkl_random @ file:///home/task_176159299715632/conda-bld/mkl_random_1761593011445/work
-narwhals==2.8.0
-nest-asyncio==1.6.0
-numexpr @ file:///home/task_176216555051259/conda-bld/numexpr_1762165561927/work
-numpy @ file:///home/task_176191377155253/conda-bld/numpy_and_numpy_base_1761914494916/work/dist/numpy-2.3.4-cp312-cp312-linux_x86_64.whl#sha256=9ebdd812d9f830c14d602bffbee1c53c462d1f20ee47105dfe693e103a072e32
-openpyxl==3.1.5
-packaging==25.0
-pandas @ file:///home/task_176233227348745/conda-bld/pandas_1762332326353/work/dist/pandas-2.3.3-cp312-cp312-linux_x86_64.whl#sha256=0864c010797a6bd32dd751b2e8470cd1061bae036d65da48dc69a4606b4674eb
-plotly==6.3.1
-pyogrio==0.12.1
-pyproj==3.7.2
-python-dateutil @ file:///croot/python-dateutil_1716495738603/work
-pytz @ file:///croot/pytz_1752135852232/work
-requests==2.32.5
-retrying==1.4.2
-setuptools==80.9.0
-shapely==2.1.2
-six @ file:///croot/six_1744271502820/work
-SQLAlchemy==2.0.44
-typing_extensions==4.15.0
-tzdata @ file:///croot/python-tzdata_1746123641790/work
-urllib3==2.5.0
-Werkzeug==3.1.3
-wheel==0.45.1
-zipp==3.23.0
+dash>=2.0
+dash-bootstrap-components>=1.0
+pandas>=1.3
+plotly>=5.0
+numpy>=1.21
+gunicorn>=20.0
+python-dotenv>=1.0
+dash_iconify>=0.1.2
+dash-daq>=0.5.0
