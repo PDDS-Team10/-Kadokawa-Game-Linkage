@@ -217,8 +217,9 @@ def _publisher_games_pie(publisher_name, start_ym, end_ym, metric = "revenue"):
     fig.update_layout(
         title = pie_title_for_publisher(publisher_name),
         title_x = 0.5,
-        margin = dict(l = 40, r = 40, t = 80, b = 40),
-        height = 380,
+        margin = dict(l = 20, r = 20, t = 60, b = 20),
+        height = 320,
+        legend = dict(font = dict(size = 12), itemsizing = "constant"),
     )
     return fig
 
