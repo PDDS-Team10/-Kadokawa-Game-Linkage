@@ -105,24 +105,22 @@ def _genre_bar_fig(df, genre, metric):
     fig.update_layout(
         xaxis_title="Region",
         yaxis_title="Revenue (JPY)" if metric == "revenue" else "Units Sold",
-        margin=dict(l=24, r=10, t=40, b=70),
+        margin=dict(l=30, r=10, t=50, b=40),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         bargap=0.22,
         legend=dict(
             title_text="",
-            orientation="h",
-            font=dict(size=11),
-            yanchor="bottom",
-            y=-0.2,
-            xanchor="center",
-            x=0.5,
-            tracegroupgap=8,
-            itemwidth=70,
+            font=dict(size=12),
+            yanchor="top",
+            y=0.95,
+            xanchor="left",
+            x=1.02,
+            tracegroupgap=4,
+            itemwidth=80,
         ),
         yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.06)"),
         xaxis=dict(showgrid=False),
-        height=420,
     )
     return fig
 
@@ -148,7 +146,7 @@ def layout():
                 className="pill-dropdown pill-dropdown--single",
                 style={"width": "220px", "margin": "0 auto 12px"},
             ),
-            dcc.Graph(id="genre-bar-graph", style={"height": "420px", "width": "100%"}),
+            dcc.Graph(id="genre-bar-graph", style={"height": "320px"}),
         ],
         style={"flex": 1},
     )
