@@ -101,7 +101,6 @@ app.layout = dbc.Container(
                 ),
             ],
         ),
-        html.Hr(),
         dcc.Location(id="url"),
         html.Div(
             id="publishers-section-card",
