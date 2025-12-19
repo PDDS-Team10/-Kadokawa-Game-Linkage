@@ -159,7 +159,7 @@ def _calc_growth(current, previous):
 def _render_delta_line(label, value):
     text = "No data" if value is None else f"{value:+.2%} {label}"
     tone = "positive" if value and value > 0 else "negative" if value and value < 0 else "neutral"
-    return html.Div(text, className=f"kpi-delta {tone}")
+    return html.Div(text, className=f"kpi-delta-line {tone}")
 
 
 def _build_kpi_card(title, value, subtitle, icon, yoy_delta, mom_delta):

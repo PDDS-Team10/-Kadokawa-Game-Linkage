@@ -29,6 +29,7 @@
 #       * `_genre_bar_df()` for the bar chart
 
 from dash import html, dcc, Input, Output, State, callback
+import dash_bootstrap_components as dbc
 import plotly.express as px
 from utils.query import read_df
 from . import bar_chart
@@ -258,13 +259,20 @@ def layout():
                                             "maxWidth": "280px",
                                         },
                                     ),
-                                    dcc.Dropdown(
-                                        id="trend-genre-select",
-                                        options=[{"label": g, "value": g} for g in GENRE_LIST],
-                                        multi=True,
-                                        clearable=False,
-                                        value=[GENRE_LIST[0]],
-                                        className="pill-dropdown pill-dropdown--multi",
+                                    dbc.DropdownMenu(
+                                        id="genre-filter-menu",
+                                        label="Genres",
+                                        className="genre-dropdown",
+                                        children=[
+                                            dbc.Checklist(
+                                                id="trend-genre-select",
+                                                options=[{"label": g, "value": g} for g in GENRE_LIST],
+                                                value=[GENRE_LIST[0]],
+                                                className="genre-checklist",
+                                                inputClassName="genre-check-input",
+                                                labelClassName="genre-check-label",
+                                            ),
+                                        ],
                                         style={
                                             "minWidth": "240px",
                                             "maxWidth": "280px",
@@ -339,6 +347,18 @@ def update_trend_charts(genres, publisher, start_ym, end_ym, metric):
     publisher_fig = _genre_publisher_trend_fig(start_ym = start_ym, end_ym = end_ym, metric = metric,
                                                genres = genres, publisher = publisher)
     return publisher_fig # , metric_label # genre_fig,
+
+
+@callback(
+    Output("genre-filter-menu", "label"),
+    Input("trend-genre-select", "value"),
+)
+def update_genre_label(selected):
+    if not selected:
+        return "Genres"
+    if len(selected) <= 2:
+        return f"Genres: {', '.join(selected)}"
+    return f"Genres: {', '.join(selected[:2])} +{len(selected) - 2}"
 
 
 @callback(
