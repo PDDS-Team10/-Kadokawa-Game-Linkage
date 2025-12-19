@@ -28,7 +28,8 @@
 #       * `_genre_publisher_trend_df()` for the line chart
 #       * `_genre_bar_df()` for the bar chart
 
-from dash import html, dcc, Input, Output, State, callback
+from dash import html, dcc, Input, Output, State, callback, no_update
+from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 import plotly.express as px
 from utils.query import read_df
@@ -57,6 +58,8 @@ LINE_PALETTE = [
     "#B33771",  # 玫紅
     "#6D214F",  # 酒紅
 ]
+
+SELECT_ALL_VALUE = "__all__"
 
 # --------- helpers ---------
 
@@ -209,8 +212,14 @@ def _genre_publisher_trend_fig(start_ym, end_ym, metric, genres, publisher):
     df = _genre_publisher_trend_df(start_ym, end_ym)
 
     # ---- 過濾 genre（支援多選）----
-    if genres:
+    if genres is None:
+        title_genres = "All Genres"
+    elif genres:
         df = df[df["genre_name"].isin(genres)]
+        title_genres = ", ".join(genres)
+    else:
+        df = df.iloc[0:0]
+        title_genres = "No Genre Selected"
 
     # ---- 過濾 publisher（支援單選）----
     if publisher:
@@ -226,12 +235,14 @@ def _genre_publisher_trend_fig(start_ym, end_ym, metric, genres, publisher):
         y_col = y_col,
         series_col = "genre_name",
         metric = metric,
-        title = f"{', '.join(genres)} Trend ({publisher})"
+        title = f"{title_genres} Trend ({publisher})"
     )
 
 def layout():
     return html.Div(
         [
+            dcc.Store(id="trend-genre-prev"),
+            dcc.Store(id="trend-genre-list"),
             html.Div(
                 [
                     html.Div(
@@ -344,8 +355,12 @@ def update_trend_charts(genres, publisher, start_ym, end_ym, metric):
     start_ym, end_ym = _normalize_month_range(start_ym, end_ym)
 
     # genre_fig = _genre_trend_fig(start_ym=start_ym, end_ym=end_ym, metric = metric_label)
+    normalized_genres = genres or []
+    if SELECT_ALL_VALUE in normalized_genres:
+        normalized_genres = None
+
     publisher_fig = _genre_publisher_trend_fig(start_ym = start_ym, end_ym = end_ym, metric = metric,
-                                               genres = genres, publisher = publisher)
+                                               genres = normalized_genres, publisher = publisher)
     return publisher_fig # , metric_label # genre_fig,
 
 
@@ -356,14 +371,57 @@ def update_trend_charts(genres, publisher, start_ym, end_ym, metric):
 def update_genre_label(selected):
     if not selected:
         return "Genres"
+    if SELECT_ALL_VALUE in selected:
+        return "All Genres"
     if len(selected) <= 2:
-        return f"Genres: {', '.join(selected)}"
-    return f"Genres: {', '.join(selected[:2])} +{len(selected) - 2}"
+        return ", ".join(selected)
+    return f"{', '.join(selected[:2])} +{len(selected) - 2}"
+
+
+@callback(
+    Output("trend-genre-select", "value", allow_duplicate=True),
+    Output("trend-genre-prev", "data"),
+    Input("trend-genre-select", "value"),
+    State("trend-genre-list", "data"),
+    State("trend-genre-prev", "data"),
+    prevent_initial_call=True,
+)
+def sync_select_all_genres(selected, genre_list, prev_selected):
+    if not genre_list:
+        raise PreventUpdate
+
+    genres = genre_list
+    selected = selected or []
+    prev_selected = prev_selected or []
+    selected_set = set(selected)
+    prev_set = set(prev_selected)
+    all_set = set(genres)
+
+    if SELECT_ALL_VALUE in selected_set and SELECT_ALL_VALUE not in prev_set:
+        new_value = [SELECT_ALL_VALUE] + genres
+        return new_value, new_value
+
+    if SELECT_ALL_VALUE in prev_set and SELECT_ALL_VALUE in selected_set:
+        if not all_set.issubset(selected_set):
+            new_value = [g for g in selected if g != SELECT_ALL_VALUE]
+            return new_value, new_value
+
+    if SELECT_ALL_VALUE in prev_set and SELECT_ALL_VALUE not in selected_set:
+        if all_set.issubset(selected_set):
+            new_value = []
+            return new_value, new_value
+
+    if SELECT_ALL_VALUE not in selected_set and all_set.issubset(selected_set):
+        new_value = [SELECT_ALL_VALUE] + genres
+        return new_value, new_value
+
+    return no_update, selected
 
 
 @callback(
     Output("trend-genre-select", "options"),
     Output("trend-genre-select", "value"),
+    Output("trend-genre-list", "data"),
     Input("trend-publisher-select", "value"),
     Input("global-start-ym", "value"),
     Input("global-end-ym", "value"),
@@ -377,22 +435,23 @@ def update_genre_options(publisher, start_ym, end_ym, current_value):
         df = df[df["publisher_name"] == publisher]
 
     genres = sorted(df["genre_name"].unique().tolist())
-    options = [{"label": g, "value": g} for g in genres]
+    options = [{"label": "Select all", "value": SELECT_ALL_VALUE}]
+    options.extend([{"label": g, "value": g} for g in genres])
 
     if not genres:
-        return options, []
+        return options, [], []
 
     if current_value is None:
         selected = []
     elif isinstance(current_value, list):
-        selected = [g for g in current_value if g in genres]
+        selected = [g for g in current_value if g in genres or g == SELECT_ALL_VALUE]
     else:
         selected = [current_value] if current_value in genres else []
 
-    if not selected:
-        selected = [genres[0]]
+    if SELECT_ALL_VALUE in selected:
+        selected = [SELECT_ALL_VALUE] + genres
 
-    return options, selected
+    return options, selected, genres
 
 
 @callback(
