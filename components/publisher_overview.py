@@ -335,7 +335,7 @@ def update_publisher_overview(
     trigger_id = ctx.triggered_id
 
     # 1. Top / Worst 模式
-    # --- 依照按鈕直接決定模式，不看 n_clicks 大小 ---
+    # --- 點 treemap 時維持目前模式，不要回到 Top ---
     if trigger_id == "publisher-top-btn":
         order = "DESC"
         mode_label = "Top"
@@ -343,8 +343,14 @@ def update_publisher_overview(
         order = "ASC"
         mode_label = "Worst"
     else:
-        order = "DESC"      # 預設是 Top
-        mode_label = "Top"
+        n_top = n_top or 0
+        n_worst = n_worst or 0
+        if n_worst > n_top:
+            order = "ASC"
+            mode_label = "Worst"
+        else:
+            order = "DESC"      # 預設是 Top
+            mode_label = "Top"
 
     pill_class = (
         "publisher-pill top-active"
