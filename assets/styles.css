@@ -167,6 +167,10 @@
     margin-top: 24px;
 }
 
+.trend-section-card {
+    margin-top: 40px;
+}
+
 .section-header {
     display: flex;
     align-items: center;

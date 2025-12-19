@@ -109,12 +109,12 @@ app.layout = dbc.Container(
                 publisher_overview.layout(),
                 html.Div(
                     line_charts.layout(),
+                    className="trend-section-card",
                     style={
                         "backgroundColor": "white",
                         "borderRadius": "24px",
                         "padding": "24px",
-                        "marginTop": "24px",
-                        "boxShadow": "0 4px 12px rgba(15, 23, 42, 0.04)",
+                        "boxShadow": "0 16px 36px rgba(15, 23, 42, 0.18)",
                     },
                 ),
             ],
