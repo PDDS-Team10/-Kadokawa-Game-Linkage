@@ -64,12 +64,12 @@ app.layout = dbc.Container(
                     children=[
                         html.Div(className="metric-slider"),
                         html.Button("Revenue", id="metric-tab-revenue", className="metric-tab metric-tab-left"),
-                        html.Button("Unit Sold", id="metric-tab-units", className="metric-tab metric-tab-right"),
+                        html.Button("Units Sold", id="metric-tab-units", className="metric-tab metric-tab-right"),
                         dcc.RadioItems(
                             id="metric-toggle",
                             options=[
                                 {"label": "Revenue", "value": "revenue"},
-                                {"label": "Unit Sold", "value": "units"},
+                                {"label": "Units Sold", "value": "units"},
                             ],
                             value="revenue",
                             style={"display": "none"},

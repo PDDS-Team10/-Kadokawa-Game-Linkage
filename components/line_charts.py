@@ -159,9 +159,17 @@ def _build_line_fig(df, x_col, y_col, series_col, metric, title):
     unique_months = df[x_col].unique().tolist()
     tickvals = unique_months[::3] if len(unique_months) > 3 else unique_months
 
+    value_label = "Revenue (JPY)" if metric == "revenue" else "Units Sold"
+
     fig.update_traces(
         line = dict(width = 3),
         marker = dict(size = 6),
+        hovertemplate = (
+            "<b>%{fullData.name}</b><br>"
+            "Month: %{x}<br>"
+            f"{value_label}: %{{y:,.0f}}"
+            "<extra></extra>"
+        ),
     )
 
     fig.update_layout(

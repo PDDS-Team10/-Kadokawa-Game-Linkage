@@ -186,7 +186,7 @@ def _publisher_games_pie(publisher_name, start_ym, end_ym, metric = "revenue"):
     df = _games_df_for_publisher(publisher_name, start_ym = start_ym, end_ym = end_ym)
 
     if df.empty:
-        return _empty_pie_placeholder(f"{publisher_name}: no game data")
+        return _empty_pie_placeholder(f"{publisher_name}: no game data", metric = metric)
     
     df_top = _top3_with_others(df, value_col = metric)
 
@@ -217,7 +217,7 @@ def _publisher_games_pie(publisher_name, start_ym, end_ym, metric = "revenue"):
     )
 
     fig.update_layout(
-        title = pie_title_for_publisher(publisher_name),
+        title = pie_title_for_publisher(publisher_name, metric),
         title_x = 0.5,
         margin = dict(l = 10, r = 10, t = 40, b = 60),
         height = 360,
@@ -428,7 +428,7 @@ def update_publisher_overview(
         selected_publisher = None
 
     return treemap_fig, pie_fig, selected_publisher, pill_class
-def pie_title_for_publisher(publisher_name: str) -> str:
+def pie_title_for_publisher(publisher_name: str, metric: str) -> str:
     """
     Render donut title with truncated publisher name if necessary.
     """
@@ -436,4 +436,5 @@ def pie_title_for_publisher(publisher_name: str) -> str:
     display_name = (
         publisher_name if len(publisher_name) <= max_len else f"{publisher_name[:max_len]}…"
     )
-    return f"Games Revenue Share<br><sup>{display_name}</sup>"
+    title_metric = "Revenue Share" if metric == "revenue" else "Units Sold"
+    return f"Game {title_metric}<br><sup>{display_name}</sup>"

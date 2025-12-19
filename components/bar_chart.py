@@ -102,6 +102,17 @@ def _genre_bar_fig(df, genre, metric):
     for trace in fig.data:
         trace.name = "<br>".join(textwrap.wrap(trace.name, width=20)) or trace.name
 
+    value_label = "Revenue (JPY)" if metric == "revenue" else "Units Sold"
+
+    fig.update_traces(
+        hovertemplate=(
+            "<b>%{fullData.name}</b><br>"
+            "Region: %{x}<br>"
+            f"{value_label}: %{{y:,.0f}}"
+            "<extra></extra>"
+        )
+    )
+
     fig.update_layout(
         xaxis_title="Region",
         yaxis_title="Revenue (JPY)" if metric == "revenue" else "Units Sold",
