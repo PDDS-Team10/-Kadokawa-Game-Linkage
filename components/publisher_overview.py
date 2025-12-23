@@ -140,49 +140,97 @@ def _games_df_for_publisher(publisher_name, start_ym = "2023-01", end_ym = "2025
     """
     return read_df(sql, [publisher_name, start_ym, end_ym])
 
-def _top3_with_others(df, value_col = "revenue"):
+def _top3_with_others(df, value_col = "revenue", max_others_ratio = 0.20, max_kept = 5):
     """
-    df: game_name, revenue (或 units)
-    value_col: "revenue" 或 "units"
+    Aggregate tail games into "Others", capping its share (e.g., 20%) and limiting
+    visible slices to `max_kept` (default 5). If hitting the max_kept limit before
+    reaching the cap, the remainder still goes to Others even if it exceeds the cap.
     """
+    df_sorted = df.sort_values(value_col, ascending = False).reset_index(drop = True)
 
-    # 排序
-    df_sorted = df.sort_values(value_col, ascending = False)
+    total = df_sorted[value_col].sum()
+    if total <= 0:
+        return df_sorted
 
-    if len(df_sorted) <= 3:
-        return df_sorted  # 不需要合併 Others
+    kept_rows = []
+    remaining = total
+    for _, row in df_sorted.iterrows():
+        if len(kept_rows) >= max_kept:
+            break
+        remaining -= row[value_col]
+        kept_rows.append(row)
+        if remaining / total <= max_others_ratio:
+            break
 
-    # Top 3
-    top3 = df_sorted.iloc[:3].copy()
+    kept_df = pd.DataFrame(kept_rows)
 
-    # Others
-    others_value = df_sorted.iloc[3:][value_col].sum()
+    others_value = total - kept_df[value_col].sum()
+    if others_value > 0:
+        others_row = pd.DataFrame([{"game_name": "Others", value_col: others_value}])
+        return pd.concat([kept_df, others_row], ignore_index = True)
 
-    others_row = pd.DataFrame([{
-        "game_name": "Others",
-        value_col: others_value
-    }])
+    return kept_df
 
-    # 合併成正式資料
-    final_df = pd.concat([top3, others_row], ignore_index = True)
-
-    return final_df
-
-def _empty_pie_placeholder(message = "Select a publisher from treemap"):
+def _empty_pie_placeholder(message = "Select a publisher from the left"):
     """
-    Build a placeholder pie chart when there is no selection or no data.
+    Build a cleaner placeholder pie chart with a centered note.
     """
-    placeholder_colors = ["#264a7f"]
+    def _rounded_rect_path(x0, y0, x1, y1, r):
+        r = min(r, (x1 - x0) / 2, (y1 - y0) / 2)
+        return (
+            f"M {x0 + r},{y0} "
+            f"L {x1 - r},{y0} "
+            f"Q {x1},{y0} {x1},{y0 + r} "
+            f"L {x1},{y1 - r} "
+            f"Q {x1},{y1} {x1 - r},{y1} "
+            f"L {x0 + r},{y1} "
+            f"Q {x0},{y1} {x0},{y1 - r} "
+            f"L {x0},{y0 + r} "
+            f"Q {x0},{y0} {x0 + r},{y0} Z"
+        )
+
+    placeholder_colors = ["#dce6f2"]
     fig = px.pie(
         names = ["No selection"],
         values = [1],
-        title = message,
+        hole = 0.7,
         color_discrete_sequence = placeholder_colors,
+    )
+    fig.update_traces(
+        textinfo = "none",
+        hoverinfo = "skip",
+        marker = dict(line = dict(color = "#dfe6f2", width = 1)),
     )
     fig.update_layout(
         showlegend = False,
-        margin = dict(l = 10, r = 10, t = 40, b = 10),
+        margin = dict(l = 10, r = 10, t = 40, b = 90),
         height = 380,
+        annotations = [
+            dict(
+                text = message,
+                x = 0.5,
+                y = 0.5,
+                showarrow = False,
+                font = dict(size = 14, color = "#1e2553"),
+                align = "center",
+                bgcolor = "rgba(255,255,255,0)",
+                bordercolor = "rgba(0,0,0,0)",
+                borderwidth = 0,
+                borderpad = 14,
+            )
+        ],
+        shapes = [
+            dict(
+                type = "path",
+                path = _rounded_rect_path(0.08, 0.36, 0.92, 0.64, 0.06),
+                xref = "paper",
+                yref = "paper",
+                line = dict(color = "#d6deed", width = 1),
+                fillcolor = "rgba(255,255,255,0.92)",
+                layer = "above",
+            )
+        ],
+        title = None,
     )
     return fig
 
@@ -224,10 +272,15 @@ def _publisher_games_pie(publisher_name, start_ym, end_ym, metric = "revenue"):
     )
 
     fig.update_layout(
-        title = pie_title_for_publisher(publisher_name, metric),
-        title_x = 0.5,
-        margin = dict(l = 10, r = 10, t = 40, b = 60),
-        height = 360,
+        title = dict(
+            text = pie_title_for_publisher(publisher_name, metric),
+            x = 0.5,
+            y = 0.94,
+            xanchor = "center",
+            yanchor = "top",
+        ),
+        margin = dict(l = 10, r = 10, t = 60, b = 90),
+        height = 400,
         legend = dict(
             orientation = "h",
             yanchor = "top",
@@ -370,7 +423,7 @@ def update_publisher_overview(
     df_pub = _publisher_df(start_ym = start_ym, end_ym = end_ym)
     treemap_fig = _publisher_treemap(df_pub, mode_label, metric)
     # Pie chart 預設為空白
-    pie_fig = _empty_pie_placeholder("Select a publisher from treemap")
+    pie_fig = _empty_pie_placeholder("Select a publisher from the left")
 
     # 沒資料就直接回空圖
     if df_pub.empty:
@@ -400,12 +453,12 @@ def update_publisher_overview(
                 metric = metric,
             )
         else:
-            pie_fig = _empty_pie_placeholder("Select a publisher from treemap")
+            pie_fig = _empty_pie_placeholder("Select a publisher from the left")
         return treemap_fig, pie_fig, pill_class, mode_label
     
     # ---------- 其他情況：看 clickData，更新 pie ----------
     if len(click_data["points"][0]) == 8:
-        pie_fig = _empty_pie_placeholder("To refresh the details, <br>move the cursor away <br>and select the publisher again.")
+        pie_fig = _empty_pie_placeholder("Selection reset<br>Click a publisher to refresh details.")
         return treemap_fig, pie_fig, pill_class, mode_label
     
     if trigger_id == "publisher-overview-graph" and click_data:

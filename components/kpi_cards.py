@@ -210,6 +210,10 @@ def _build_kpi_card(title, value, subtitle, icon, yoy_delta, mom_delta, unit = N
                             html.Div(subtitle, className="kpi-card-subtext") if subtitle else None,
                         ],
                     ),
+                    html.Div(
+                        [_render_delta_line("MoM", mom_delta), _render_delta_line("YoY", yoy_delta)],
+                        className="kpi-delta kpi-delta-row",
+                    ),
                 ],
             ),
             html.Div(
@@ -218,10 +222,6 @@ def _build_kpi_card(title, value, subtitle, icon, yoy_delta, mom_delta, unit = N
                     html.Div(
                         DashIconify(icon=icon, width=22, height=22, color="#ffffff"),
                         className="kpi-icon-badge",
-                    ),
-                    html.Div(
-                        [_render_delta_line("MoM", mom_delta), _render_delta_line("YoY", yoy_delta)],
-                        className="kpi-delta",
                     ),
                 ],
             ),

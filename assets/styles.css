@@ -367,9 +367,10 @@ body {
     padding: 16px 22px;
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     box-shadow: none;
     border: none;
+    position: relative;
 }
 
 .kpi-card-left {
@@ -377,6 +378,7 @@ body {
     flex-direction: column;
     flex: 1 1 auto;
     justify-content: center;
+    gap: 8px;
 }
 
 .kpi-card-content {
@@ -420,8 +422,9 @@ body {
 .kpi-card-right {
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
+    align-items: flex-start;
     gap: 10px;
+    padding-top: 4px;
 }
 
 .kpi-icon-badge {
@@ -443,6 +446,17 @@ body {
     color: #7b8093;
     font-weight: 600;
     line-height: 1.4;
+}
+
+.kpi-delta-row {
+    margin-top: 2px;
+    gap: 10px;
+    flex-wrap: wrap;
+    position: absolute;
+    right: 22px;
+    bottom: 14px;
+    justify-content: flex-end;
+    text-align: right;
 }
 
 /* 百分比數字：維持原本強調 */

@@ -289,8 +289,10 @@ def layout():
                                         children=[
                                             dbc.Checklist(
                                                 id="trend-genre-select",
-                                                options=[{"label": g, "value": g} for g in GENRE_LIST],
-                                                value=[GENRE_LIST[0]],
+                                                options=[{"label": "Select all", "value": SELECT_ALL_VALUE}] + [
+                                                    {"label": g, "value": g} for g in GENRE_LIST
+                                                ],
+                                                value=[SELECT_ALL_VALUE],
                                                 className="genre-checklist",
                                                 inputClassName="genre-check-input",
                                                 labelClassName="genre-check-label",
@@ -453,6 +455,7 @@ def update_genre_options(publisher, start_ym, end_ym, current_value):
     if not genres:
         return options, [], []
 
+    # Keep prior selections if still valid; otherwise fall back to the first genre for this publisher.
     if current_value is None:
         selected = []
     elif isinstance(current_value, list):
@@ -460,7 +463,10 @@ def update_genre_options(publisher, start_ym, end_ym, current_value):
     else:
         selected = [current_value] if current_value in genres else []
 
-    if SELECT_ALL_VALUE in selected:
+    # Default to Select all; expand it to include all genres for this publisher.
+    if not selected or selected == [SELECT_ALL_VALUE]:
+        selected = [SELECT_ALL_VALUE] + genres
+    elif SELECT_ALL_VALUE in selected:
         selected = [SELECT_ALL_VALUE] + genres
 
     return options, selected, genres
