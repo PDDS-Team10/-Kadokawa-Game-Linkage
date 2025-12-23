@@ -3,6 +3,7 @@ import plotly.express as px
 import textwrap
 
 from utils.query import read_df
+from components.kpi_cards import _format_compact_number
 
 GENRE_LIST = [
     "Action",
@@ -98,6 +99,8 @@ def _genre_bar_fig(df, genre, metric):
         color_discrete_sequence=custom_colors,
     )
 
+    df["y_display"] = df[y_col].apply(_format_compact_number)
+
     # Wrap legend labels so long game names don't push the legend too wide
     for trace in fig.data:
         trace.name = "<br>".join(textwrap.wrap(trace.name, width=20)) or trace.name
@@ -105,10 +108,11 @@ def _genre_bar_fig(df, genre, metric):
     value_label = "Revenue (JPY)" if metric == "revenue" else "Units Sold"
 
     fig.update_traces(
+        customdata = df["y_display"],
         hovertemplate=(
             "<b>%{fullData.name}</b><br>"
             "Region: %{x}<br>"
-            f"{value_label}: %{{y:,.0f}}"
+            f"{value_label}: %{{customdata}}"
             "<extra></extra>"
         )
     )
