@@ -88,18 +88,18 @@ def _genre_bar_fig(df, genre, metric):
         .index.tolist()
     )
     df = df[df["game_name"].isin(title_rank)]
+    df["y_display"] = df[y_col].apply(_format_compact_number)
 
     fig = px.bar(
         df,
         x="region",
         y=y_col,
         color="game_name",
+        custom_data=["y_display"],
         barmode="group",
         title=None,
         color_discrete_sequence=custom_colors,
     )
-
-    df["y_display"] = df[y_col].apply(_format_compact_number)
 
     # Wrap legend labels so long game names don't push the legend too wide
     for trace in fig.data:
@@ -108,11 +108,10 @@ def _genre_bar_fig(df, genre, metric):
     value_label = "Revenue (JPY)" if metric == "revenue" else "Units Sold"
 
     fig.update_traces(
-        customdata = df["y_display"],
         hovertemplate=(
             "<b>%{fullData.name}</b><br>"
             "Region: %{x}<br>"
-            f"{value_label}: %{{customdata}}"
+            f"{value_label}: %{{customdata[0]}}"
             "<extra></extra>"
         )
     )

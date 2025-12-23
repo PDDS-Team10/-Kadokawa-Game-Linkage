@@ -145,19 +145,20 @@ def _build_line_fig(df, x_col, y_col, series_col, metric, title):
             paper_bgcolor = "rgba(0,0,0,0)",
         )
         return fig
+    
+    df["y_display"] = df[y_col].apply(_format_compact_number)
 
     fig = px.line(
         df,
         x = x_col,
         y = y_col,
         color = series_col,
+        custom_data=["y_display"],
         markers = True,
         title = None,
         template = "plotly_white",
         color_discrete_sequence = LINE_PALETTE,
     )
-
-    df["y_display"] = df[y_col].apply(_format_compact_number)
 
     unique_months = df[x_col].unique().tolist()
     tickvals = unique_months[::3] if len(unique_months) > 3 else unique_months
@@ -167,11 +168,10 @@ def _build_line_fig(df, x_col, y_col, series_col, metric, title):
     fig.update_traces(
         line = dict(width = 3),
         marker = dict(size = 6),
-        customdata = df["y_display"],
         hovertemplate = (
             "<b>%{fullData.name}</b><br>"
             "Month: %{x}<br>"
-            f"{value_label}: %{{customdata}}"
+            f"{value_label}: %{{customdata[0]}}"
             "<extra></extra>"
         ),
     )
