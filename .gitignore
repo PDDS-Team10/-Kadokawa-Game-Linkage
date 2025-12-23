@@ -1,6 +1,7 @@
+# Python cache
 __pycache__/
 *.pyc
+*.pyo
 
-# python cache
-__pycache__/
-*.pyc
+# Python cache (nested)
+**/__pycache__/
