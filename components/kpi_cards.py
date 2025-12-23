@@ -146,6 +146,18 @@ def _format_number(n):
     except (TypeError, ValueError):
         return "0"
 
+def _format_compact_number(n, decimals = 2):
+    try:
+        n = float(n)
+    except (TypeError, ValueError):
+        return "0"
+
+    abs_n = abs(n)
+
+    if abs_n >= 1_000_000:
+        return f"{n / 1_000_000:.{decimals}f}M"
+    else:
+        return f"{int(n):,}"
 
 def _calc_growth(current, previous):
     if current is None or previous in (None, 0):
@@ -156,13 +168,28 @@ def _calc_growth(current, previous):
         return None
 
 
+# def _render_delta_line(label, value):
+#     text = "No data" if value is None else f"{value:+.2%} {label}"
+#     tone = "positive" if value and value > 0 else "negative" if value and value < 0 else "neutral"
+#     return html.Div(text, className=f"kpi-delta {tone}")
+
 def _render_delta_line(label, value):
-    text = "No data" if value is None else f"{value:+.2%} {label}"
-    tone = "positive" if value and value > 0 else "negative" if value and value < 0 else "neutral"
-    return html.Div(text, className=f"kpi-delta {tone}")
+    if value is None:
+        return html.Div("No data", className = "kpi-delta neutral")
+
+    tone = "positive" if value > 0 else "negative" if value < 0 else "neutral"
+
+    return html.Div(
+        [
+            html.Span(f"{value:+.2%}", className ="kpi-delta-value"),
+            html.Span(f" {label}", className = "kpi-delta-label"),
+        ],
+        className = f"kpi-delta {tone}",
+    )
 
 
-def _build_kpi_card(title, value, subtitle, icon, yoy_delta, mom_delta):
+
+def _build_kpi_card(title, value, subtitle, icon, yoy_delta, mom_delta, unit = None):
     return html.Div(
         className="kpi-card",
         children=[
@@ -176,6 +203,7 @@ def _build_kpi_card(title, value, subtitle, icon, yoy_delta, mom_delta):
                             html.Div(
                                 [
                                     html.Span(value, className="kpi-card-value"),
+                                    html.Span(unit, className="kpi-card-unit") if unit else None,
                                 ],
                                 className="kpi-value-group",
                             ),
@@ -216,8 +244,10 @@ def update_kpis(_):
 
     curr_revenue = kpi["latest_data"]["revenue"]
     curr_units = kpi["latest_data"]["units"]
-    curr_revenue_value = _format_number(curr_revenue)
-    curr_units_value = _format_number(curr_units)
+    curr_revenue_value = _format_compact_number(curr_revenue)
+    curr_units_value = _format_compact_number(curr_units)
+    # curr_revenue_value = _format_number(curr_revenue)
+    # curr_units_value = _format_number(curr_units)
 
     prev_one_month_revenue = kpi["prev_one_month_data"]["revenue"]
     prev_one_month_units = kpi["prev_one_month_data"]["units"]
@@ -232,7 +262,8 @@ def update_kpis(_):
     pub_kpi = _fetch_best_publisher_kpis()
     best_publisher = pub_kpi["publisher"] if pub_kpi else "-"
     best_pub_curr_units = pub_kpi["units"]["latest"] if pub_kpi else None
-    best_pub_units_text = _format_number(best_pub_curr_units) if best_pub_curr_units is not None else None
+    # best_pub_units_text = _format_number(best_pub_curr_units) if best_pub_curr_units is not None else None
+    best_pub_units_text = _format_compact_number(best_pub_curr_units)
 
     prev_one_month_pub_units = pub_kpi["units"].get("prev_one_month") if pub_kpi else None
     prev_year_pub_units = pub_kpi["units"].get("prev_year") if pub_kpi else None
@@ -245,7 +276,8 @@ def update_kpis(_):
     cards = [
         _build_kpi_card(
             title="Total Revenue",
-            value=f"{curr_revenue_value} JPY",
+            value=f"{curr_revenue_value}",
+            unit = "JPY",
             subtitle=None,
             icon="bi:currency-dollar",
             yoy_delta=yoy_revenue_pct,

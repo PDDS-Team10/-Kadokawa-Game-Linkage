@@ -34,6 +34,7 @@ import pandas as pd
 from dash import html, dcc, Input, Output, callback, ctx, no_update, State
 import plotly.express as px
 from utils.query import read_df
+from components.kpi_cards import _format_compact_number
 
 # ---------- helpers ----------
 
@@ -99,12 +100,14 @@ def _publisher_treemap(df, mode_label, metric = "revenue"):
         title = f"{mode_label} 5 Publishers by {title_metric}",
     )
 
+    df[metric_col] = df[metric_col].apply(lambda x: _format_compact_number(x))
+
     # Custom hover text to show nicely formatted revenue
     fig.update_traces(
         customdata = df[["publisher_name", metric_col]].to_numpy(),
         hovertemplate = "<b>%{label}</b><br>"
                         f"{title_metric}: " 
-                        "%{customdata[1]:,.0f}"
+                        "%{customdata[1]}"
                         "<extra></extra>",
         marker = dict(line = dict(width = 0, color = "rgba(0,0,0,0)")),
     )
@@ -191,7 +194,7 @@ def _publisher_games_pie(publisher_name, start_ym, end_ym, metric = "revenue"):
     df_top = _top3_with_others(df, value_col = metric)
 
     # 加 custom_data 以便 hover 顯示 value
-    df_top["formatted_value"] = df_top[metric].apply(lambda x: f"{x:,.0f}")
+    df_top["formatted_value"] = df_top[metric].apply(lambda x: _format_compact_number(x))
 
     custom_colors = ['#264a7f', '#5d85b3', '#a5c0dd', '#dce6f2']  # 深 → 淺
 
