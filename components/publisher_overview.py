@@ -119,6 +119,7 @@ def _publisher_treemap(df, mode_label, metric = "revenue"):
         clickmode = "event+select",
         paper_bgcolor = "rgba(0,0,0,0)",
         plot_bgcolor = "rgba(0,0,0,0)",
+        uirevision = "publisher-treemap"
     )
     return fig
 
@@ -244,7 +245,11 @@ def _publisher_games_pie(publisher_name, start_ym, end_ym, metric = "revenue"):
 def layout():
     return html.Div(
         [
-            dcc.Store(id="publisher-selected"),
+            # dcc.Store(id="publisher-selected"),
+            # 🔹 存 Top / Worst 模式
+            dcc.Store(
+                id = "publisher-mode"
+            ),
             html.Div(
                 [
                     html.H2("Publishers Overview", className="section-title"),
@@ -278,14 +283,17 @@ def layout():
                             style={"height": "360px"},
                             config={"doubleClick": False, "displayModeBar": True},
                         ),
-                        style={"flex": 3, "marginRight": "24px"},
+                        style={"flex": 3, "marginRight": "24px", "pointerEvents": "none"},
                     ),
                     html.Div(
-                        dcc.Graph(
-                            id="publisher-games-pie",
-                            style={"height": "360px"},
+                        dcc.Loading(
+                            dcc.Graph(
+                                id="publisher-games-pie",
+                                style={"height": "360px"},
+                            ),
+                            type = "circle",
                         ),
-                        style={"flex": 1.2, "minWidth": "260px"},
+                        style={"flex": 1.2, "minWidth": "260px"}, 
                     ),
                 ],
                 style={"display": "flex", "alignItems": "stretch"},
@@ -299,29 +307,32 @@ def layout():
 @callback(
     Output("publisher-overview-graph", "figure"),
     Output("publisher-games-pie", "figure"),
-    Output("publisher-selected", "data"),
+    # Output("publisher-selected", "data"),
     Output("publisher-toggle-pill", "className"),
+    Output("publisher-mode", "data"),
     Input("publisher-worst-btn", "n_clicks"),
     Input("publisher-top-btn", "n_clicks"),
     # Input("publisher-clear-btn", "n_clicks"),
     Input("publisher-overview-graph", "clickData"),
-    Input("publisher-overview-graph", "selectedData"),
+    # Input("publisher-overview-graph", "selectedData"),
     Input("metric-toggle", "value"), # "revenue" or "units"
     Input("global-start-ym", "value"),
     Input("global-end-ym", "value"),
 
-    State("publisher-selected", "data"), # 目前已選的 publisher
+    State("publisher-mode", "data"),
+    # State("publisher-selected", "data"), # 目前已選的 publisher
 )
 def update_publisher_overview(
     n_worst,
     n_top,
     # n_clear,
     click_data,
-    selected_data,
+    # selected_data,
     metric,
     start_ym,
     end_ym,
-    selected_publisher
+    current_mode,
+    # selected_publisher
 ):
     """
     Main callback for the Publisher Overview section.
@@ -337,28 +348,18 @@ def update_publisher_overview(
         - If "Clear selection" is clicked, reset the pie chart to placeholder.
         - Otherwise, read hoverData from the treemap and show that publisher's games.
     """
+
     # 處理年月範圍
     start_ym, end_ym = _normalize_month_range(start_ym, end_ym)
 
-    trigger_id = ctx.triggered_id
+    trigger_id = ctx.triggered_id # 預設是 metric-toggle
 
     # 1. Top / Worst 模式
-    # --- 點 treemap 時維持目前模式，不要回到 Top ---
-    if trigger_id == "publisher-top-btn":
-        order = "DESC"
+    mode_label = current_mode or "Top"
+    if ctx.triggered_id == "publisher-top-btn":
         mode_label = "Top"
-    elif trigger_id == "publisher-worst-btn":
-        order = "ASC"
+    elif ctx.triggered_id == "publisher-worst-btn":
         mode_label = "Worst"
-    else:
-        n_top = n_top or 0
-        n_worst = n_worst or 0
-        if n_worst > n_top:
-            order = "ASC"
-            mode_label = "Worst"
-        else:
-            order = "DESC"      # 預設是 Top
-            mode_label = "Top"
 
     pill_class = (
         "publisher-pill top-active"
@@ -366,93 +367,66 @@ def update_publisher_overview(
         else "publisher-pill worst-active"
     )
 
-    df_pub = _publisher_df(start_ym = start_ym, end_ym = end_ym) # order = order, limit = 5, 
+    df_pub = _publisher_df(start_ym = start_ym, end_ym = end_ym)
     treemap_fig = _publisher_treemap(df_pub, mode_label, metric)
     # Pie chart 預設為空白
     pie_fig = _empty_pie_placeholder("Select a publisher from treemap")
 
-    # Metric toggle or Top/Worst 都：不保留選取，不畫 pie
-    if trigger_id in ("metric-toggle", "publisher-top-btn", "publisher-worst-btn"):
-        selected_publisher = None
-        return treemap_fig, pie_fig, selected_publisher, pill_class
-
-    # # 如果是切換 metric：treemap 重新畫（回到 Top/Worst 初始狀態）
-    # if trigger_id == "metric-toggle":
-    #     return treemap_fig, _empty_pie_placeholder("Select a publisher from treemap"), None
-
-    # # --- 如果是切換 Top/Worst：直接回傳空 pie ---
-    # if trigger_id in ("publisher-top-btn", "publisher-worst-btn"):
-    #     return treemap_fig, _empty_pie_placeholder("Select a publisher from treemap"), None
-
-    # Treemap：初始載入 / Top/Worst 切換 / 日期改變，都要重畫
-    if trigger_id in (
-        None,
-        "publisher-worst-btn",
-        "publisher-top-btn",
-        "global-start-ym",
-        "global-end-ym",
-    ):
-        treemap_fig = _publisher_treemap(df_pub, mode_label, metric)
-    else:
-        treemap_fig = no_update
-
     # 沒資料就直接回空圖
     if df_pub.empty:
-        if treemap_fig is no_update:
-            treemap_fig = _publisher_treemap(df_pub, mode_label, metric)
         pie_fig = _empty_pie_placeholder("No publisher data")
-        return treemap_fig, pie_fig, None, pill_class
+        return treemap_fig, pie_fig, pill_class, mode_label
 
-    # Clear 按鈕：只清右邊 pie
-    # if trigger_id == "publisher-clear-btn":
-    #     pie_fig = _empty_pie_placeholder("Select a publisher from treemap")
-    #     return treemap_fig, pie_fig, None
+    # Top/Worst：不保留選取，不畫 pie
+    if trigger_id in ("publisher-top-btn", "publisher-worst-btn"):
+        # selected_publisher = None
+        return treemap_fig, pie_fig, pill_class, mode_label
 
-    # ---------- 其他情況：看 clickData / selectedData，更新 pie ----------
-    trigger_prop = ctx.triggered[0]["prop_id"] if ctx.triggered else ""
-    clicked_name = None
+    # ---------- 先算目前 treemap 是否選到 publisher ----------
+    selected_publisher = None
 
-    if trigger_prop == "publisher-overview-graph.selectedData":
-        if selected_data and "points" in selected_data and selected_data["points"]:
-            clicked_name = selected_data["points"][0]["customdata"][0]
+    if click_data and "points" in click_data and click_data["points"]:
+        point = click_data["points"][0]
+        if point.get("entry") == "":
+            selected_publisher = point["customdata"][0]
+
+    # ===== 🔹 新增的判斷：日期 / metric 變動 =====
+    if trigger_id in ("metric-toggle", "global-start-ym", "global-end-ym"):
+        if selected_publisher:
+            pie_fig = _publisher_games_pie(
+                selected_publisher,
+                start_ym = start_ym,
+                end_ym = end_ym,
+                metric = metric,
+            )
         else:
             pie_fig = _empty_pie_placeholder("Select a publisher from treemap")
-            selected_publisher = None
-            return treemap_fig, pie_fig, selected_publisher, pill_class
-    elif trigger_prop == "publisher-overview-graph.clickData":
-        if click_data and "points" in click_data and click_data["points"]:
-            clicked_name = click_data["points"][0]["customdata"][0]
+        return treemap_fig, pie_fig, pill_class, mode_label
+    
+    # ---------- 其他情況：看 clickData，更新 pie ----------
+    if len(click_data["points"][0]) == 8:
+        pie_fig = _empty_pie_placeholder("To refresh the details, <br>move the cursor away <br>and select the publisher again.")
+        return treemap_fig, pie_fig, pill_class, mode_label
+    
+    if trigger_id == "publisher-overview-graph" and click_data:
+        point = click_data["points"][0]
 
-    # 1️⃣ 點到同一個 publisher → 取消選取
-    if clicked_name and clicked_name == selected_publisher:
-        pie_fig = _empty_pie_placeholder("Select a publisher from treemap")
-        selected_publisher = None
+        publisher_name = point["customdata"][0]
+        entry = point.get("entry")
+        # publisher_name = click_data["points"][0]["customdata"][0]
 
-    # 2️⃣ 點到新的 publisher → 更新 pie
-    elif clicked_name:
-        pie_fig = _publisher_games_pie(
-            clicked_name,
-            start_ym = start_ym,
-            end_ym = end_ym,
-            metric = metric
-        )
-        selected_publisher = clicked_name
+        if "entry" in click_data["points"][0]:
+            entry = click_data["points"][0]["entry"]
+            if entry == '':
+                pie_fig = _publisher_games_pie(publisher_name, start_ym = start_ym, end_ym = end_ym, 
+                                               metric = metric,)
+            else:
+                pie_fig = _empty_pie_placeholder("Select a publisher from treemap")
+        else:
+            pie_fig = _empty_pie_placeholder("Select a publisher from treemap")
+    
+    return treemap_fig, pie_fig, pill_class, mode_label
 
-    # 3️⃣ 如果這次沒點到任何 publisher，但之前有選過，就維持上一個選取
-    elif selected_publisher:
-        pie_fig = _publisher_games_pie(
-            selected_publisher,
-            start_ym = start_ym,
-            end_ym = end_ym,
-            metric = metric
-        )
-
-    # 4️⃣ 否則就是完全沒選 → 顯示 placeholder
-    else:
-        pie_fig = _empty_pie_placeholder("Select a publisher from treemap")
-        selected_publisher = None
-
-    return treemap_fig, pie_fig, selected_publisher, pill_class
 def pie_title_for_publisher(publisher_name: str, metric: str) -> str:
     """
     Render donut title with truncated publisher name if necessary.
