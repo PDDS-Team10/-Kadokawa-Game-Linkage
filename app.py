@@ -15,6 +15,7 @@ app = Dash(
     __name__,
     external_stylesheets=[dbc.themes.BOOTSTRAP],
 )
+server = app.server
 app.title = "Kadokawa Game Dashboard"
 
 
@@ -63,12 +64,12 @@ app.layout = dbc.Container(
                     children=[
                         html.Div(className="metric-slider"),
                         html.Button("Revenue", id="metric-tab-revenue", className="metric-tab metric-tab-left"),
-                        html.Button("Unit Sold", id="metric-tab-units", className="metric-tab metric-tab-right"),
+                        html.Button("Units Sold", id="metric-tab-units", className="metric-tab metric-tab-right"),
                         dcc.RadioItems(
                             id="metric-toggle",
                             options=[
                                 {"label": "Revenue", "value": "revenue"},
-                                {"label": "Unit Sold", "value": "units"},
+                                {"label": "Units Sold", "value": "units"},
                             ],
                             value="revenue",
                             style={"display": "none"},
@@ -100,7 +101,6 @@ app.layout = dbc.Container(
                 ),
             ],
         ),
-        html.Hr(),
         dcc.Location(id="url"),
         html.Div(
             id="publishers-section-card",
@@ -109,12 +109,12 @@ app.layout = dbc.Container(
                 publisher_overview.layout(),
                 html.Div(
                     line_charts.layout(),
+                    className="trend-section-card",
                     style={
                         "backgroundColor": "white",
                         "borderRadius": "24px",
                         "padding": "24px",
-                        "marginTop": "24px",
-                        "boxShadow": "0 4px 12px rgba(15, 23, 42, 0.04)",
+                        "boxShadow": "0 16px 36px rgba(15, 23, 42, 0.18)",
                     },
                 ),
             ],

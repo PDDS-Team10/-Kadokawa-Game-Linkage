@@ -167,6 +167,10 @@
     margin-top: 24px;
 }
 
+.trend-section-card {
+    margin-top: 40px;
+}
+
 .section-header {
     display: flex;
     align-items: center;
@@ -468,15 +472,20 @@ body {
     color: #6b7280;
 }
 
-.kpi-delta.positive {
+.kpi-delta-line {
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+.kpi-delta-line.positive {
     color: var(--kpi-positive);
 }
 
-.kpi-delta.negative {
+.kpi-delta-line.negative {
     color: var(--kpi-negative);
 }
 
-.kpi-delta.neutral {
+.kpi-delta-line.neutral {
     color: #7b8093;
 }
 .pill-dropdown {
@@ -525,6 +534,52 @@ body {
     box-shadow: 0 12px 30px rgba(15, 23, 42, 0.2) !important;
     border: none !important;
 }
+
+.genre-dropdown .dropdown-toggle {
+    background-color: #3f33a3;
+    border: none;
+    border-radius: 999px;
+    color: #ffffff;
+    height: 44px;
+    padding: 0 18px;
+    font-size: 14px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.genre-dropdown .dropdown-toggle:hover,
+.genre-dropdown .dropdown-toggle:focus {
+    background-color: #4a3ec0;
+    box-shadow: 0 0 0 2px rgba(63, 51, 163, 0.25);
+}
+
+.genre-dropdown .dropdown-menu {
+    padding: 8px 10px;
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.2);
+    min-width: 240px;
+}
+
+.genre-dropdown .genre-checklist .form-check {
+    margin: 0;
+}
+
+.genre-dropdown .genre-check-label {
+    display: block;
+    padding: 6px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #1f2937;
+}
+
+.genre-dropdown .genre-check-input:checked + .genre-check-label {
+    background-color: #e5e7eb;
+    color: #111827;
+}
 .pill-dropdown--multi .Select-control {
     min-height: 44px;
     height: 44px;
@@ -571,8 +626,8 @@ body {
 }
 
 .pill-dropdown--multi .Select-option.is-selected {
-    background-color: #3f33a3 !important;
-    color: #ffffff !important;
+    background-color: #e5e7eb !important;
+    color: #1f2937 !important;
 }
 
 .pill-dropdown--multi .Select-option.is-focused {

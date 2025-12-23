@@ -1,5 +1,6 @@
 from dash import html, dcc, Input, Output, callback
 import plotly.express as px
+import textwrap
 
 from utils.query import read_df
 
@@ -93,19 +94,47 @@ def _genre_bar_fig(df, genre, metric):
         y=y_col,
         color="game_name",
         barmode="group",
-        title=f"Game Title Performance — {genre}",
+        title=None,
         color_discrete_sequence=custom_colors,
     )
+
+    # Wrap legend labels so long game names don't push the legend too wide
+    for trace in fig.data:
+        trace.name = "<br>".join(textwrap.wrap(trace.name, width=20)) or trace.name
+
+    value_label = "Revenue (JPY)" if metric == "revenue" else "Units Sold"
+
+    fig.update_traces(
+        hovertemplate=(
+            "<b>%{fullData.name}</b><br>"
+            "Region: %{x}<br>"
+            f"{value_label}: %{{y:,.0f}}"
+            "<extra></extra>"
+        )
+    )
+
     fig.update_layout(
         xaxis_title="Region",
         yaxis_title="Revenue (JPY)" if metric == "revenue" else "Units Sold",
-        margin=dict(l=30, r=10, t=50, b=40),
+        margin=dict(l=24, r=40, t=34, b=60),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
-        bargap=0.22,
-        legend=dict(title_text=""),
+        bargap=0.2,
+        legend=dict(
+            title_text="",
+            orientation="v",
+            font=dict(size=11),
+            x=0.8,
+            xanchor="left",
+            y=1.0,
+            yanchor="top",
+            itemsizing="trace",
+            itemwidth=50,
+            tracegroupgap=2,
+        ),
         yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.06)"),
-        xaxis=dict(showgrid=False),
+        xaxis=dict(showgrid=False, domain=[0, 0.85], automargin=True),
+        height=320,
     )
     return fig
 
@@ -115,7 +144,13 @@ def layout():
         [
             html.H3(
                 "Game Title Performance",
-                style={"margin": "0 0 12px", "textAlign": "center", "color": "#1e2553"},
+                style={
+                    "margin": "0 0 12px",
+                    "textAlign": "center",
+                    "color": "#1e2553",
+                    "fontSize": "32px",
+                    "whiteSpace": "nowrap",
+                },
             ),
             dcc.Dropdown(
                 id="genre-bar-select",
@@ -125,7 +160,7 @@ def layout():
                 className="pill-dropdown pill-dropdown--single",
                 style={"width": "220px", "margin": "0 auto 12px"},
             ),
-            dcc.Graph(id="genre-bar-graph", style={"height": "320px"}),
+            dcc.Graph(id="genre-bar-graph", style={"height": "320px", "width": "100%"}),
         ],
         style={"flex": 1},
     )
