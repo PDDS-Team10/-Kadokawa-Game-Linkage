@@ -116,6 +116,7 @@ def _publisher_treemap(df, mode_label, metric = "revenue"):
         margin = dict(l = 0, r = 10, t = 70, b = 10),
         height = 380,
         title_x = 0,
+        clickmode = "event+select",
         paper_bgcolor = "rgba(0,0,0,0)",
         plot_bgcolor = "rgba(0,0,0,0)",
     )
@@ -170,10 +171,12 @@ def _empty_pie_placeholder(message = "Select a publisher from treemap"):
     """
     Build a placeholder pie chart when there is no selection or no data.
     """
+    placeholder_colors = ["#264a7f"]
     fig = px.pie(
         names = ["No selection"],
         values = [1],
         title = message,
+        color_discrete_sequence = placeholder_colors,
     )
     fig.update_layout(
         showlegend = False,
@@ -189,7 +192,7 @@ def _publisher_games_pie(publisher_name, start_ym, end_ym, metric = "revenue"):
     df = _games_df_for_publisher(publisher_name, start_ym = start_ym, end_ym = end_ym)
 
     if df.empty:
-        return _empty_pie_placeholder(f"{publisher_name}: no game data")
+        return _empty_pie_placeholder(f"{publisher_name}: no game data", metric = metric)
     
     df_top = _top3_with_others(df, value_col = metric)
 
@@ -204,6 +207,7 @@ def _publisher_games_pie(publisher_name, start_ym, end_ym, metric = "revenue"):
         values = metric,
         color = "game_name",
         color_discrete_sequence = custom_colors,
+        hole = 0.55,
     )
 
     label_name = "Revenue" if metric == "revenue" else "Units Sold"
@@ -211,17 +215,27 @@ def _publisher_games_pie(publisher_name, start_ym, end_ym, metric = "revenue"):
     fig.update_traces(
         textinfo = "percent",
         customdata = df_top["formatted_value"].to_numpy().reshape(-1, 1),
-        hovertemplate = "<b>%{label}</b><br>" +
-                        f"{label_name}: " + 
-                        "%{customdata[0]}<br>" + 
-                        "Percent: %{percent}"
+        hovertemplate = "<b>%{label}</b><br>"
+                        f"{label_name}: "
+                        "%{customdata[0]}<br>"
+                        "Percent: %{percent}",
+        marker = dict(line = dict(color = "#ffffff", width = 1)),
     )
 
     fig.update_layout(
-        title = pie_title_for_publisher(publisher_name),
+        title = pie_title_for_publisher(publisher_name, metric),
         title_x = 0.5,
-        margin = dict(l = 40, r = 40, t = 80, b = 40),
-        height = 380,
+        margin = dict(l = 10, r = 10, t = 40, b = 60),
+        height = 360,
+        legend = dict(
+            orientation = "h",
+            yanchor = "top",
+            y = -0.05,
+            xanchor = "center",
+            x = 0.5,
+            font = dict(size = 11),
+            itemsizing = "trace",
+        ),
     )
     return fig
 
@@ -264,14 +278,14 @@ def layout():
                             style={"height": "360px"},
                             config={"doubleClick": False, "displayModeBar": True},
                         ),
-                        style={"flex": 2.2, "marginRight": "24px"},
+                        style={"flex": 3, "marginRight": "24px"},
                     ),
                     html.Div(
                         dcc.Graph(
                             id="publisher-games-pie",
                             style={"height": "360px"},
                         ),
-                        style={"flex": 1, "minWidth": "260px"},
+                        style={"flex": 1.2, "minWidth": "260px"},
                     ),
                 ],
                 style={"display": "flex", "alignItems": "stretch"},
@@ -291,6 +305,7 @@ def layout():
     Input("publisher-top-btn", "n_clicks"),
     # Input("publisher-clear-btn", "n_clicks"),
     Input("publisher-overview-graph", "clickData"),
+    Input("publisher-overview-graph", "selectedData"),
     Input("metric-toggle", "value"), # "revenue" or "units"
     Input("global-start-ym", "value"),
     Input("global-end-ym", "value"),
@@ -302,6 +317,7 @@ def update_publisher_overview(
     n_top,
     # n_clear,
     click_data,
+    selected_data,
     metric,
     start_ym,
     end_ym,
@@ -327,7 +343,7 @@ def update_publisher_overview(
     trigger_id = ctx.triggered_id
 
     # 1. Top / Worst 模式
-    # --- 依照按鈕直接決定模式，不看 n_clicks 大小 ---
+    # --- 點 treemap 時維持目前模式，不要回到 Top ---
     if trigger_id == "publisher-top-btn":
         order = "DESC"
         mode_label = "Top"
@@ -335,8 +351,14 @@ def update_publisher_overview(
         order = "ASC"
         mode_label = "Worst"
     else:
-        order = "DESC"      # 預設是 Top
-        mode_label = "Top"
+        n_top = n_top or 0
+        n_worst = n_worst or 0
+        if n_worst > n_top:
+            order = "ASC"
+            mode_label = "Worst"
+        else:
+            order = "DESC"      # 預設是 Top
+            mode_label = "Top"
 
     pill_class = (
         "publisher-pill top-active"
@@ -386,18 +408,28 @@ def update_publisher_overview(
     #     pie_fig = _empty_pie_placeholder("Select a publisher from treemap")
     #     return treemap_fig, pie_fig, None
 
-    # ---------- 其他情況：看 clickData，實作「點第二次取消選取」 ----------
+    # ---------- 其他情況：看 clickData / selectedData，更新 pie ----------
+    trigger_prop = ctx.triggered[0]["prop_id"] if ctx.triggered else ""
     clicked_name = None
-    if click_data and "points" in click_data and click_data["points"]:
-        clicked_name = click_data["points"][0]["customdata"][0]
 
-    # 1️⃣ 如果點到同一個 publisher（第二次點），就當作「取消選取」→ 清空 pie
+    if trigger_prop == "publisher-overview-graph.selectedData":
+        if selected_data and "points" in selected_data and selected_data["points"]:
+            clicked_name = selected_data["points"][0]["customdata"][0]
+        else:
+            pie_fig = _empty_pie_placeholder("Select a publisher from treemap")
+            selected_publisher = None
+            return treemap_fig, pie_fig, selected_publisher, pill_class
+    elif trigger_prop == "publisher-overview-graph.clickData":
+        if click_data and "points" in click_data and click_data["points"]:
+            clicked_name = click_data["points"][0]["customdata"][0]
+
+    # 1️⃣ 點到同一個 publisher → 取消選取
     if clicked_name and clicked_name == selected_publisher:
         pie_fig = _empty_pie_placeholder("Select a publisher from treemap")
         selected_publisher = None
 
-    # 2️⃣ 如果點到新的 publisher，就更新 pie，並記錄這次選取
-    elif clicked_name: # and clicked_name in set(df_pub["publisher_name"]):
+    # 2️⃣ 點到新的 publisher → 更新 pie
+    elif clicked_name:
         pie_fig = _publisher_games_pie(
             clicked_name,
             start_ym = start_ym,
@@ -407,12 +439,13 @@ def update_publisher_overview(
         selected_publisher = clicked_name
 
     # 3️⃣ 如果這次沒點到任何 publisher，但之前有選過，就維持上一個選取
-    # elif selected_publisher: # and selected_publisher in set(df_pub["publisher_name"]):
-    #     pie_fig = _publisher_games_pie(
-    #         selected_publisher,
-    #         start_ym=start_ym,
-    #         end_ym=end_ym,
-    #     )
+    elif selected_publisher:
+        pie_fig = _publisher_games_pie(
+            selected_publisher,
+            start_ym = start_ym,
+            end_ym = end_ym,
+            metric = metric
+        )
 
     # 4️⃣ 否則就是完全沒選 → 顯示 placeholder
     else:
@@ -420,8 +453,13 @@ def update_publisher_overview(
         selected_publisher = None
 
     return treemap_fig, pie_fig, selected_publisher, pill_class
-def pie_title_for_publisher(publisher_name: str) -> str:
+def pie_title_for_publisher(publisher_name: str, metric: str) -> str:
     """
-    Always render title in two lines to prevent clipping regardless of length.
+    Render donut title with truncated publisher name if necessary.
     """
-    return f"Games Revenue Share<br><sup>{publisher_name}</sup>"
+    max_len = 28
+    display_name = (
+        publisher_name if len(publisher_name) <= max_len else f"{publisher_name[:max_len]}…"
+    )
+    title_metric = "Revenue Share" if metric == "revenue" else "Units Sold"
+    return f"Game {title_metric}<br><sup>{display_name}</sup>"
