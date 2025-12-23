@@ -392,13 +392,20 @@ body {
     display: flex;
     align-items: baseline;
     gap: 6px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap !important;
 }
 
 .kpi-card-value {
     font-size: 28px;
     font-weight: 700;
     color: #1d2330;
+}
+
+.kpi-card-unit {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1d2330;
+    white-space: nowrap;
 }
 
 .kpi-card-subtext {
@@ -424,12 +431,41 @@ body {
 }
 
 .kpi-delta {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
+    display: inline-flex;          /* 關鍵 */
+    flex-direction: row;           /* 關鍵 */
+    align-items: baseline;         /* 對齊數字與文字 */
     gap: 4px;
-    font-size: 12px;
+    font-size: 16px;
     color: #7b8093;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+/* 百分比數字：維持原本強調 */
+.kpi-delta-value {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+/* MoM / YoY label：降權重 */
+.kpi-delta-label {
+    font-size: 11px;
+    color: #9aa0a6 !important;   /* 中性灰，強制覆蓋父層的正負色 */
+    font-weight: 400;
+    margin-left: 4px;
+}
+
+/* 正負顏色仍然只影響數字 */
+.kpi-delta.positive .kpi-delta-value {
+    color: #2e7d32;
+}
+
+.kpi-delta.negative .kpi-delta-value {
+    color: #c62828;
+}
+
+.kpi-delta.neutral .kpi-delta-value {
+    color: #6b7280;
 }
 
 .kpi-delta.positive {
