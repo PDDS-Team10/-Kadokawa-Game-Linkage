@@ -28,7 +28,7 @@
 #       * `_genre_publisher_trend_df()` for the line chart
 #       * `_genre_bar_df()` for the bar chart
 
-from dash import html, dcc, Input, Output, State, callback, no_update
+from dash import html, dcc, Input, Output, State, callback, no_update, ctx
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 import plotly.express as px
@@ -292,7 +292,7 @@ def layout():
                                                 options=[{"label": "Select all", "value": SELECT_ALL_VALUE}] + [
                                                     {"label": g, "value": g} for g in GENRE_LIST
                                                 ],
-                                                value=[SELECT_ALL_VALUE],
+                                                value=[GENRE_LIST[0]],
                                                 className="genre-checklist",
                                                 inputClassName="genre-check-input",
                                                 labelClassName="genre-check-label",
@@ -455,19 +455,30 @@ def update_genre_options(publisher, start_ym, end_ym, current_value):
     if not genres:
         return options, [], []
 
-    # Keep prior selections if still valid; otherwise fall back to the first genre for this publisher.
-    if current_value is None:
-        selected = []
-    elif isinstance(current_value, list):
-        selected = [g for g in current_value if g in genres or g == SELECT_ALL_VALUE]
-    else:
-        selected = [current_value] if current_value in genres else []
+    # If only one genre exists for this publisher, default to Select all (shows label "All Genres").
+    if len(genres) == 1:
+        selected = [SELECT_ALL_VALUE] + genres
+        return options, selected, genres
 
-    # Default to Select all; expand it to include all genres for this publisher.
-    if not selected or selected == [SELECT_ALL_VALUE]:
-        selected = [SELECT_ALL_VALUE] + genres
-    elif SELECT_ALL_VALUE in selected:
-        selected = [SELECT_ALL_VALUE] + genres
+    trigger_id = ctx.triggered_id
+
+    # If publisher changed, force default to this publisher's first genre.
+    if trigger_id == "trend-publisher-select":
+        selected = [genres[0]]
+    else:
+        # Keep prior selections if still valid.
+        if current_value is None:
+            selected = []
+        elif isinstance(current_value, list):
+            selected = [g for g in current_value if g in genres or g == SELECT_ALL_VALUE]
+        else:
+            selected = [current_value] if current_value in genres else []
+
+        # If nothing valid remains, fall back to first genre.
+        if not selected:
+            selected = [genres[0]]
+        elif selected == [SELECT_ALL_VALUE] or SELECT_ALL_VALUE in selected:
+            selected = [SELECT_ALL_VALUE] + genres
 
     return options, selected, genres
 
