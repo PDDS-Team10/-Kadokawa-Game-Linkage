@@ -211,7 +211,7 @@ def _empty_pie_placeholder(message = "Select a publisher from the treemap"):
                 x = 0.5,
                 y = 0.5,
                 showarrow = False,
-                font = dict(size = 14, color = "#1e2553"),
+                font = dict(size = 12, color = "#1e2553"),
                 align = "center",
                 bgcolor = "rgba(255,255,255,0)",
                 bordercolor = "rgba(0,0,0,0)",
