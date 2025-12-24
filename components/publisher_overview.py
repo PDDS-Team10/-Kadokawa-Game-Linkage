@@ -119,7 +119,7 @@ def _publisher_treemap(df, mode_label, metric = "revenue"):
         clickmode = "event+select",
         paper_bgcolor = "rgba(0,0,0,0)",
         plot_bgcolor = "rgba(0,0,0,0)",
-        uirevision = "publisher-treemap"
+        uirevision = f"{mode_label}"
     )
     return fig
 
@@ -171,7 +171,7 @@ def _top3_with_others(df, value_col = "revenue", max_others_ratio = 0.20, max_ke
 
     return kept_df
 
-def _empty_pie_placeholder(message = "Select a publisher from the left"):
+def _empty_pie_placeholder(message = "Select a publisher from the treemap"):
     """
     Build a cleaner placeholder pie chart with a centered note.
     """
@@ -423,7 +423,7 @@ def update_publisher_overview(
     df_pub = _publisher_df(start_ym = start_ym, end_ym = end_ym)
     treemap_fig = _publisher_treemap(df_pub, mode_label, metric)
     # Pie chart 預設為空白
-    pie_fig = _empty_pie_placeholder("Select a publisher from the left")
+    pie_fig = _empty_pie_placeholder("Select a publisher from the treemap")
 
     # 沒資料就直接回空圖
     if df_pub.empty:
@@ -433,6 +433,7 @@ def update_publisher_overview(
     # Top/Worst：不保留選取，不畫 pie
     if trigger_id in ("publisher-top-btn", "publisher-worst-btn"):
         # selected_publisher = None
+
         return treemap_fig, pie_fig, pill_class, mode_label
 
     # ---------- 先算目前 treemap 是否選到 publisher ----------
@@ -453,12 +454,12 @@ def update_publisher_overview(
                 metric = metric,
             )
         else:
-            pie_fig = _empty_pie_placeholder("Select a publisher from the left")
+            pie_fig = _empty_pie_placeholder("Select a publisher from the treemap")
         return treemap_fig, pie_fig, pill_class, mode_label
     
     # ---------- 其他情況：看 clickData，更新 pie ----------
     if len(click_data["points"][0]) == 8:
-        pie_fig = _empty_pie_placeholder("Selection reset<br>Click a publisher to refresh details.")
+        pie_fig = _empty_pie_placeholder("To reselect the same publisher<br>move the cursor away and click again")
         return treemap_fig, pie_fig, pill_class, mode_label
     
     if trigger_id == "publisher-overview-graph" and click_data:
