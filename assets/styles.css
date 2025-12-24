@@ -257,7 +257,7 @@
 
 /* Make the menu wider so long labels don't wrap */
 .pill-dropdown .Select-menu-outer {
-    min-width: 260px !important;
+    min-width: 270px !important;
 }
 
 /* 確保 pill dropdown 本體可定位箭頭 */
