@@ -119,7 +119,7 @@ def _publisher_treemap(df, mode_label, metric = "revenue"):
         clickmode = "event+select",
         paper_bgcolor = "rgba(0,0,0,0)",
         plot_bgcolor = "rgba(0,0,0,0)",
-        uirevision = "publisher-treemap"
+        uirevision = f"{mode_label}"
     )
     return fig
 
@@ -433,6 +433,7 @@ def update_publisher_overview(
     # Top/Worst：不保留選取，不畫 pie
     if trigger_id in ("publisher-top-btn", "publisher-worst-btn"):
         # selected_publisher = None
+
         return treemap_fig, pie_fig, pill_class, mode_label
 
     # ---------- 先算目前 treemap 是否選到 publisher ----------
